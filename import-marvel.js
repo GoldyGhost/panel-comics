@@ -64,10 +64,25 @@ function slug(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+function findCreator(comic, roleKeywords) {
+  const items = comic.creators?.items || [];
+  const hit = items.find((c) => roleKeywords.some((k) => c.role?.toLowerCase().includes(k)));
+  return hit?.name || null;
+}
+
+// Marvel renvoie une image "cassée" (image_not_available) pour beaucoup
+// d'anciens numéros : on la filtre pour garder le fallback coloré du site.
+function coverFromThumbnail(comic) {
+  const t = comic.thumbnail;
+  if (!t || !t.path || t.path.includes("image_not_available")) return null;
+  // "portrait_uncanny" = un format vertical proche d'une vraie couverture (~300x450)
+  return `${t.path.replace(/^http:/, "https:")}/portrait_uncanny.${t.extension}`;
+}
+
 // Transforme un "comic" renvoyé par Marvel en ligne pour la table `issues`.
 function toIssueRow(comic, seriesTitle, seriesId) {
-  const writer = comic.creators?.items?.find((c) => c.role?.toLowerCase().includes("writer"))?.name || null;
-  const artist = comic.creators?.items?.find((c) => c.role?.toLowerCase().includes("penciler"))?.name || null;
+  const writer = findCreator(comic, ["writer"]);
+  const artist = findCreator(comic, ["penciler", "artist", "cover artist"]);
   const year = comic.dates?.find((d) => d.type === "onsaleDate")?.date?.slice(0, 4) || null;
   return {
     id: `marvel-${comic.id}`,
@@ -80,6 +95,7 @@ function toIssueRow(comic, seriesTitle, seriesId) {
     year: year ? parseInt(year, 10) : null,
     writer,
     artist,
+    cover_url: coverFromThumbnail(comic),
     custom: false,
   };
 }
