@@ -1,0 +1,17 @@
+{
+  "name": "panel-comics-scripts",
+  "private": true,
+  "type": "module",
+  "description": "Script d'import du catalogue Marvel vers Supabase (voir scripts/import-marvel.js).",
+  "scripts": {
+    "import:comicvine": "node --env-file=.env scripts/import-comicvine.js",
+    "enrich:covers": "node --env-file=.env scripts/enrich-covers-comicvine.js",
+    "import:marvel": "node --env-file=.env scripts/import-marvel.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
