@@ -66,7 +66,7 @@
   .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 60%); z-index: 2; }
   .cover .top-tag { font-size: 9.5px; font-weight: 800; color: #fff; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); z-index: 3; }
   .cover .num { font-family: 'Bangers', sans-serif; font-size: 34px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); z-index: 3; line-height: 1; }
-  .cover .read-badge { position: absolute; top: 6px; right: 6px; background: #2E8B57; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border: 2px solid var(--ink); z-index: 3; }
+  .cover.is-read { border: 4px solid #2E8B57; box-shadow: 0 0 0 2px rgba(46,139,87,0.35), var(--card-shadow); }
   .cover .rated-badge { position: absolute; top: 6px; left: 6px; background: var(--ink); color: var(--gold); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid var(--gold); z-index: 3; }
   .card-meta { margin-top: 7px; font-size: 12px; line-height: 1.3; }
   .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; letter-spacing: 1px; }
@@ -338,13 +338,13 @@ function fmtYearRange(issues){
 }
 function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function coverEl(issue){
-  const badge = isRead(issue.id) ? '<div class="read-badge">✓</div>' : '';
+  const isReadIssue = isRead(issue.id);
   const hasRating = logsForIssue(issue.id).some(l=>l.rating!=null);
   const ratedBadge = hasRating ? '<div class="rated-badge">★</div>' : '';
   const hasImg = !!issue.coverUrl;
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
-  return `<div class="cover${hasImg?' has-img':''}" style="--accent:${issue.color}" data-issue="${issue.id}">
-    ${img}${badge}${ratedBadge}<div class="top-tag">${escapeHtml(issue.seriesTitle)}</div><div class="num">#${issue.number}</div>
+  return `<div class="cover${hasImg?' has-img':''}${isReadIssue?' is-read':''}" style="--accent:${issue.color}" data-issue="${issue.id}">
+    ${img}${ratedBadge}<div class="top-tag">${escapeHtml(issue.seriesTitle)}</div><div class="num">#${issue.number}</div>
   </div>`;
 }
 function issueCardHtml(issue){
