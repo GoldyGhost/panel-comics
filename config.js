@@ -9,6 +9,6 @@
 // ============================================================
 
 window.PANEL_CONFIG = {
-  SUPABASE_URL: "https://VOTRE-PROJET.supabase.co",
-  SUPABASE_ANON_KEY: "VOTRE_CLE_ANON_PUBLIQUE",
+  SUPABASE_URL: "https://vykmpfnwukmcxghorelm.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5a21wZm53dWttY3hnaG9yZWxtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAwODk5MzgsImV4cCI6MjEwNTY2NTkzOH0.kwEoW31BJHsFGXEU1-amHNFAelnuyv5-Jto4TBXk3lA",
 };
