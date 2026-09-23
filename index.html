@@ -66,7 +66,7 @@
   .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 60%); z-index: 2; }
   .cover .top-tag { font-size: 9.5px; font-weight: 800; color: #fff; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); z-index: 3; }
   .cover .num { font-family: 'Bangers', sans-serif; font-size: 34px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); z-index: 3; line-height: 1; }
-  .cover .read-badge { position: absolute; top: 6px; right: 6px; background: var(--gold); color: #1B160F; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border: 2px solid var(--ink); z-index: 3; }
+  .cover .read-badge { position: absolute; top: 6px; right: 6px; background: #2E8B57; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border: 2px solid var(--ink); z-index: 3; }
   .cover .rated-badge { position: absolute; top: 6px; left: 6px; background: var(--ink); color: var(--gold); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid var(--gold); z-index: 3; }
   .card-meta { margin-top: 7px; font-size: 12px; line-height: 1.3; }
   .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; letter-spacing: 1px; }
@@ -168,7 +168,6 @@
         <button data-tab="browse">Browse</button>
         <button data-tab="diary">Diary</button>
         <button data-tab="stats">Stats</button>
-        <button data-tab="add">Add</button>
       </nav>
       <div class="user-chip" id="userChip"></div>
     </div>
@@ -177,7 +176,8 @@
     </div>
   </header>
   <main id="main"></main>
-  <footer>PANEL — connected to your Supabase database. Each account has its own diary; the issue catalog is shared.</footer>
+  <footer>PANEL — connected to your Supabase database. Each account has its own diary; the issue catalog is shared.<br>
+  Cover art and issue data courtesy of Marvel / Comic Vine. MARVEL and all related characters are trademarks of Marvel Characters, Inc. PANEL is an unofficial, non-commercial fan project for personal use, not affiliated with, endorsed by, or sponsored by Marvel.</footer>
 </div>
 
 <div id="authScreen" class="auth-wrap" style="display:none">
@@ -309,15 +309,6 @@ async function deleteLog(id){
   if(error){ alert("Error deleting: " + error.message); return false; }
   return true;
 }
-async function insertIssue(issue){
-  const { error } = await sb.from('issues').insert({
-    id: issue.id, series_id: issue.seriesId, series_title: issue.seriesTitle, color: issue.color,
-    run_name: issue.runName, arc_name: issue.arcName, number: issue.number, year: issue.year,
-    writer: issue.writer, artist: issue.artist, custom: true, created_by: session.user.id
-  });
-  if(error){ alert("Error adding: " + error.message); return false; }
-  return true;
-}
 
 async function boot(){
   document.getElementById('userChip').innerHTML =
@@ -381,37 +372,6 @@ function filteredIssues(){
   return list;
 }
 
-/* ---------------- EXPORT ---------------- */
-function downloadFile(filename, content, mime){
-  const blob = new Blob([content], {type: mime});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-function exportDiaryJSON(){
-  const rows = logsCache.map(l=>{
-    const iss = issueById(l.issueId);
-    return {
-      series: iss?.seriesTitle || null, issueNumber: iss?.number ?? null, storyline: iss?.arcName || null,
-      writer: iss?.writer || null, artist: iss?.artist || null,
-      dateRead: l.dateRead, ratingOutOf5: l.rating!=null ? l.rating/2 : null, review: l.review || null
-    };
-  });
-  downloadFile('panel-diary.json', JSON.stringify(rows, null, 2), 'application/json');
-}
-function csvCell(v){ return `"${String(v??'').replace(/"/g,'""')}"`; }
-function exportDiaryCSV(){
-  const header = ['Series','Issue #','Storyline','Writer','Artist','Date read','Rating (out of 5)','Review'];
-  const rows = logsCache.map(l=>{
-    const iss = issueById(l.issueId);
-    return [iss?.seriesTitle, iss?.number, iss?.arcName, iss?.writer, iss?.artist, l.dateRead, l.rating!=null?(l.rating/2):'', l.review];
-  });
-  const csv = [header, ...rows].map(r=> r.map(csvCell).join(',')).join('\n');
-  downloadFile('panel-diary.csv', csv, 'text/csv');
-}
-
 /* ---------------- TABS ---------------- */
 function setTab(tab){
   state.tab = tab;
@@ -432,7 +392,6 @@ function render(){
   else if(state.tab==='browse') main.innerHTML = renderBrowse();
   else if(state.tab==='diary') main.innerHTML = renderDiary();
   else if(state.tab==='stats') main.innerHTML = renderStats();
-  else if(state.tab==='add') main.innerHTML = renderAdd();
   attachMainEvents();
 }
 
@@ -515,11 +474,7 @@ function renderBrowse(){
 function renderDiary(){
   const sorted = logsCache.slice().sort((a,b)=> b.dateRead.localeCompare(a.dateRead) || b.loggedAt.localeCompare(a.loggedAt));
   if(!sorted.length) return `<div class="empty"><span class="display">Your diary is empty</span>Log your first read from "Browse" or "Home".</div>`;
-  return `<div class="section-title"><h2>Diary</h2><span class="count">${sorted.length} entr${sorted.length!==1?'ies':'y'}</span>
-    <span style="margin-left:auto;display:flex;gap:8px">
-      <button class="log-group-btn" id="exportJsonBtn">Export JSON</button>
-      <button class="log-group-btn" id="exportCsvBtn">Export CSV</button>
-    </span></div>
+  return `<div class="section-title"><h2>Diary</h2><span class="count">${sorted.length} entr${sorted.length!==1?'ies':'y'}</span></div>
   ${sorted.map(l=>{
     const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry"><div class="diary-cover" style="--accent:${iss.color}"></div>
@@ -554,23 +509,6 @@ function renderStats(){
   ${!logsCache.length ? `<div class="empty"><span class="display">No data yet</span>Stats will appear once you've logged your first reads.</div>` : ''}`;
 }
 
-function renderAdd(){
-  const seriesOptions = Array.from(new Set(issuesCache.map(i=>i.seriesTitle))).sort();
-  return `<div class="section-title"><h2>Add an issue</h2></div>
-  <p class="hint" style="margin-bottom:16px;max-width:60ch">The catalog is shared across all accounts: what you add here becomes visible to everyone. Tip: reuse the exact same "Storyline" text across different series (e.g. all issues of a crossover) to have them grouped together under "Storyline" in Browse.</p>
-  <form class="add-form" id="addForm">
-    <div class="full"><label>Series</label><input list="seriesList" id="f-series" placeholder="e.g. Amazing Spider-Man" required>
-    <datalist id="seriesList">${seriesOptions.map(s=>`<option value="${escapeHtml(s)}">`).join('')}</datalist></div>
-    <div><label>Run / main creative team</label><input id="f-run" placeholder="e.g. Nick Spencer" required></div>
-    <div><label>Storyline</label><input id="f-arc" placeholder="e.g. One More Day" required></div>
-    <div><label>Issue #</label><input id="f-number" type="number" min="0" required></div>
-    <div><label>Year</label><input id="f-year" type="number" min="1930" max="2100"></div>
-    <div><label>Writer</label><input id="f-writer"></div>
-    <div><label>Artist</label><input id="f-artist"></div>
-    <div class="full"><button type="submit" class="btn">Add to catalog</button></div>
-  </form>`;
-}
-
 function attachMainEvents(){
   document.querySelectorAll('[data-issue]').forEach(el=> el.addEventListener('click', ()=> openModal(el.dataset.issue)));
   const gs = document.getElementById('groupSelect');
@@ -579,10 +517,6 @@ function attachMainEvents(){
   if(rs) rs.addEventListener('change', e=>{ state.filterRating = e.target.value; render(); });
   const ys = document.getElementById('yearSelect');
   if(ys) ys.addEventListener('change', e=>{ state.filterYear = e.target.value; render(); });
-  const ej = document.getElementById('exportJsonBtn');
-  if(ej) ej.addEventListener('click', exportDiaryJSON);
-  const ec = document.getElementById('exportCsvBtn');
-  if(ec) ec.addEventListener('click', exportDiaryCSV);
   document.querySelectorAll('.log-group-btn').forEach(el=> el.addEventListener('click', ()=>{
     const key = el.dataset.groupKey;
     const group = lastGroups[key];
@@ -591,26 +525,6 @@ function attachMainEvents(){
   document.querySelectorAll('[data-del]').forEach(el=> el.addEventListener('click', async ()=>{
     if(await deleteLog(el.dataset.del)) refreshLogsAndRender();
   }));
-  const addForm = document.getElementById('addForm');
-  if(addForm) addForm.addEventListener('submit', async e=>{
-    e.preventDefault();
-    const seriesTitle = document.getElementById('f-series').value.trim();
-    const run = document.getElementById('f-run').value.trim();
-    const arc = document.getElementById('f-arc').value.trim();
-    const number = parseInt(document.getElementById('f-number').value,10);
-    if(!seriesTitle || isNaN(number)) return;
-    const existing = issuesCache.find(i=>i.seriesTitle.toLowerCase()===seriesTitle.toLowerCase());
-    const color = existing ? existing.color : ['#C8202A','#1E3A8A','#2E8B57','#B08900','#8B1E3F'][Math.floor(Math.random()*5)];
-    const seriesId = existing ? existing.seriesId : 'c-'+seriesTitle.toLowerCase().replace(/[^a-z0-9]+/g,'-');
-    const issue = {
-      id: 'custom-'+Date.now()+'-'+Math.floor(Math.random()*1000), seriesId, seriesTitle, color,
-      runName: run||'—', arcName: arc||'—', number,
-      year: parseInt(document.getElementById('f-year').value,10)||null,
-      writer: document.getElementById('f-writer').value.trim()||'—',
-      artist: document.getElementById('f-artist').value.trim()||'—'
-    };
-    if(await insertIssue(issue)){ addForm.reset(); setTab('browse'); refreshIssuesAndRender(); }
-  });
 }
 
 /* ---------------- SINGLE-ISSUE MODAL ---------------- */
@@ -631,7 +545,6 @@ function renderModal(){
     <div class="field"><label>Rating (optional)</label>
       <div class="star-picker" id="starPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearRating" style="margin-top:2px">Clear rating</button></div>
-    <div class="field"><label>Date read</label><input type="date" id="modalDate" value="${today}" max="${today}"></div>
     <div class="field"><label>Review (optional)</label><textarea id="modalReview" placeholder="Your thoughts on this issue…"></textarea></div>
     <button class="btn" id="saveLog">Log this read</button>
     ${past.length ? `<div class="past-logs"><h4>History (${past.length})</h4>
@@ -640,9 +553,8 @@ function renderModal(){
   document.querySelectorAll('#starPicker span').forEach(s=> s.addEventListener('click', ()=>{ modalRating = parseInt(s.dataset.v,10); updateStarPicker('starPicker', modalRating); }));
   document.getElementById('clearRating').addEventListener('click', ()=>{ modalRating = null; updateStarPicker('starPicker', modalRating); });
   document.getElementById('saveLog').addEventListener('click', async ()=>{
-    const dateRead = document.getElementById('modalDate').value || today;
     const review = document.getElementById('modalReview').value.trim();
-    const ok = await insertLog({ issueId: modalIssueId, dateRead, rating: modalRating, review });
+    const ok = await insertLog({ issueId: modalIssueId, dateRead: today, rating: modalRating, review });
     if(ok){ closeModal(); refreshLogsAndRender(); }
   });
   document.querySelectorAll('[data-del-modal]').forEach(el=> el.addEventListener('click', async ()=>{
@@ -672,7 +584,6 @@ function renderBatchModal(){
     <div class="field"><label>Rating (optional, applied to all)</label>
       <div class="star-picker" id="batchStarPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearBatchRating" style="margin-top:2px">Clear rating</button></div>
-    <div class="field"><label>Date read</label><input type="date" id="batchDate" value="${today}" max="${today}"></div>
     <div class="field"><label>Review (optional, applied to all)</label><textarea id="batchReview" placeholder="Your thoughts on this run…"></textarea></div>
     <button class="btn" id="saveBatchLog">Log all ${batchIssueIds.length} issues</button>
     <p class="hint">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>`;
@@ -681,9 +592,8 @@ function renderBatchModal(){
   document.getElementById('clearBatchRating').addEventListener('click', ()=>{ batchRating = null; updateStarPicker('batchStarPicker', batchRating); });
   document.getElementById('saveBatchLog').addEventListener('click', async (e)=>{
     const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Logging…';
-    const dateRead = document.getElementById('batchDate').value || today;
     const review = document.getElementById('batchReview').value.trim();
-    const ok = await insertLogsBatch(batchIssueIds, { dateRead, rating: batchRating, review });
+    const ok = await insertLogsBatch(batchIssueIds, { dateRead: today, rating: batchRating, review });
     if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; btn.textContent = `Log all ${batchIssueIds.length} issues`; }
   });
 }
