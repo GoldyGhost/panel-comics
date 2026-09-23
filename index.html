@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PANEL — Journal de lecture comics</title>
+<title>PANEL — Comics Reading Log</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,16 +16,6 @@
     --red: #C8202A; --red-deep: #97141C; --gold: #E8A317; --blue: #1E3A8A;
     --line: rgba(27,22,15,0.16); --card-shadow: 4px 4px 0 rgba(27,22,15,0.18); --radius: 3px;
     padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --paper: #17140F; --paper-2: #201B14; --ink: #F2EBDA; --ink-soft: #C9BEA9;
-      --line: rgba(242,235,218,0.14); --card-shadow: 4px 4px 0 rgba(0,0,0,0.5);
-    }
-  }
-  :root[data-theme="dark"] {
-    --paper: #17140F; --paper-2: #201B14; --ink: #F2EBDA; --ink-soft: #C9BEA9;
-    --line: rgba(242,235,218,0.14); --card-shadow: 4px 4px 0 rgba(0,0,0,0.5);
   }
   html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
   * { box-sizing: border-box; }
@@ -47,10 +37,9 @@
   nav.tabs button { background: transparent; border: 2px solid transparent; color: var(--ink-soft); padding: 7px 12px; font-size: 14px; font-weight: 600; border-radius: var(--radius); }
   nav.tabs button.active { background: var(--ink); color: var(--paper); }
   nav.tabs button:not(.active):hover { border-color: var(--ink); color: var(--ink); }
-  .theme-btn, .logout-btn { background: var(--paper-2); border: 2px solid var(--ink); color: var(--ink); border-radius: 50%; flex-shrink: 0; }
-  .theme-btn { width: 34px; height: 34px; font-size: 15px; }
-  .user-chip { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-soft); }
-  .logout-btn { border-radius: var(--radius); width:auto; height:auto; padding:6px 10px; font-size:11.5px; font-weight:700; }
+  .logout-btn { background: var(--paper-2); border: 2px solid var(--ink); color: var(--ink); border-radius: var(--radius); flex-shrink: 0; padding:6px 10px; font-size:11.5px; font-weight:700; }
+  .user-chip { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-soft); margin-left:auto; }
+  nav.tabs + .user-chip { margin-left: 0; }
   .search-row { max-width: 1180px; margin: 0 auto; padding: 0 18px 12px; }
   .search-row input { width: 100%; padding: 9px 12px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 14px; }
 
@@ -78,6 +67,7 @@
   .cover .top-tag { font-size: 9.5px; font-weight: 800; color: #fff; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); z-index: 3; }
   .cover .num { font-family: 'Bangers', sans-serif; font-size: 34px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); z-index: 3; line-height: 1; }
   .cover .read-badge { position: absolute; top: 6px; right: 6px; background: var(--gold); color: #1B160F; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border: 2px solid var(--ink); z-index: 3; }
+  .cover .rated-badge { position: absolute; top: 6px; left: 6px; background: var(--ink); color: var(--gold); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid var(--gold); z-index: 3; }
   .card-meta { margin-top: 7px; font-size: 12px; line-height: 1.3; }
   .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; letter-spacing: 1px; }
 
@@ -85,8 +75,11 @@
   .browse-controls label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin-right: 4px; }
   .browse-controls select { padding: 6px 8px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 13px; }
   .group-block { margin-bottom: 30px; }
-  .group-block h3 { font-size: 15px; margin: 0 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; align-items: baseline; }
+  .group-block .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; padding-bottom: 6px; margin-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  .group-block h3 { font-size: 15px; margin: 0; }
   .group-block h3 .n { font-size: 11px; color: var(--ink-soft); font-weight: 500; }
+  .log-group-btn { background: var(--paper); border: 2px solid var(--ink); border-radius: var(--radius); padding: 5px 10px; font-size: 11.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .log-group-btn:hover { background: var(--gold); }
 
   .diary-entry { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 2px dashed var(--line); }
   .diary-cover { width: 56px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; }
@@ -158,9 +151,9 @@
 <body>
 
 <div id="configWarning" style="display:none">
-  <strong>Configuration manquante.</strong> Ouvre <code>config.js</code> et remplace
-  <code>SUPABASE_URL</code> et <code>SUPABASE_ANON_KEY</code> par les valeurs de ton
-  propre projet Supabase (Project Settings → API). Voir le README.
+  <strong>Missing configuration.</strong> Open <code>config.js</code> and replace
+  <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> with the values from
+  your own Supabase project (Project Settings → API). See the README.
 </div>
 
 <div id="app" style="display:none">
@@ -168,38 +161,37 @@
     <div class="top-inner">
       <div class="logo">
         <span class="mark">PANEL</span>
-        <span class="sub">journal de lecture — comics Marvel</span>
+        <span class="sub">a comics reading log</span>
       </div>
       <nav class="tabs" id="tabs">
-        <button data-tab="home" class="active">Accueil</button>
-        <button data-tab="browse">Parcourir</button>
-        <button data-tab="diary">Journal</button>
+        <button data-tab="home" class="active">Home</button>
+        <button data-tab="browse">Browse</button>
+        <button data-tab="diary">Diary</button>
         <button data-tab="stats">Stats</button>
-        <button data-tab="add">Ajouter</button>
+        <button data-tab="add">Add</button>
       </nav>
       <div class="user-chip" id="userChip"></div>
-      <button class="theme-btn" id="themeBtn" title="Changer de thème">◐</button>
     </div>
     <div class="search-row">
-      <input type="text" id="searchInput" placeholder="Chercher un numéro, une série, un·e auteur·e…">
+      <input type="text" id="searchInput" placeholder="Search an issue, series, writer…">
     </div>
   </header>
   <main id="main"></main>
-  <footer>PANEL — connecté à ta base Supabase. Chaque compte a son propre journal ; le catalogue d'issues est partagé.</footer>
+  <footer>PANEL — connected to your Supabase database. Each account has its own diary; the issue catalog is shared.</footer>
 </div>
 
 <div id="authScreen" class="auth-wrap" style="display:none">
   <div class="auth-card">
     <h1 class="display">PANEL</h1>
-    <p class="lede">Connecte-toi pour retrouver ton journal de lecture, ou crée un compte.</p>
+    <p class="lede">Sign in to get back to your reading log, or create an account.</p>
     <div class="auth-toggle">
-      <button id="toLogin" class="active">Se connecter</button>
-      <button id="toSignup">Créer un compte</button>
+      <button id="toLogin" class="active">Sign in</button>
+      <button id="toSignup">Create account</button>
     </div>
     <form class="auth-form" id="authForm">
       <div class="full"><label>Email</label><input type="email" id="authEmail" required></div>
-      <div class="full"><label>Mot de passe</label><input type="password" id="authPassword" minlength="6" required></div>
-      <div class="full"><button type="submit" class="btn" id="authSubmit">Se connecter</button></div>
+      <div class="full"><label>Password</label><input type="password" id="authPassword" minlength="6" required></div>
+      <div class="full"><button type="submit" class="btn" id="authSubmit">Sign in</button></div>
     </form>
     <div class="error-msg" id="authError"></div>
   </div>
@@ -213,7 +205,7 @@
 
 /* ---------------- CONFIG / SUPABASE CLIENT ---------------- */
 const cfg = window.PANEL_CONFIG || {};
-if(!cfg.SUPABASE_URL || cfg.SUPABASE_URL.includes("VOTRE-PROJET")){
+if(!cfg.SUPABASE_URL || cfg.SUPABASE_URL.includes("VOTRE-PROJET") || cfg.SUPABASE_URL.includes("YOUR-PROJECT")){
   document.getElementById('configWarning').style.display = 'block';
   return;
 }
@@ -223,20 +215,9 @@ const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
 let session = null;
 let issuesCache = [];
 let logsCache = [];
-let state = { tab:'home', groupBy:'series', search:'' };
+let state = { tab:'home', groupBy:'series', search:'', filterRating:'', filterYear:'' };
 let authMode = 'login';
-
-/* ---------------- THEME ---------------- */
-(function initTheme(){
-  const saved = localStorage.getItem('panel_theme');
-  if(saved) document.documentElement.setAttribute('data-theme', saved);
-})();
-document.getElementById('themeBtn').addEventListener('click', ()=>{
-  const cur = document.documentElement.getAttribute('data-theme');
-  const next = cur === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('panel_theme', next);
-});
+let lastGroups = {}; // populated by renderBrowse, used by the "Log all" batch action
 
 /* ---------------- AUTH ---------------- */
 function showAuthScreen(){
@@ -253,7 +234,7 @@ function setAuthMode(mode){
   authMode = mode;
   document.getElementById('toLogin').classList.toggle('active', mode==='login');
   document.getElementById('toSignup').classList.toggle('active', mode==='signup');
-  document.getElementById('authSubmit').textContent = mode==='login' ? 'Se connecter' : 'Créer mon compte';
+  document.getElementById('authSubmit').textContent = mode==='login' ? 'Sign in' : 'Create my account';
   document.getElementById('authError').textContent = '';
 }
 document.getElementById('authForm').addEventListener('submit', async (e)=>{
@@ -272,11 +253,11 @@ document.getElementById('authForm').addEventListener('submit', async (e)=>{
       const { error } = await sb.auth.signUp({ email, password });
       if(error) throw error;
       errEl.style.color = 'var(--ink-soft)';
-      errEl.textContent = "Compte créé. Si la confirmation par email est activée, vérifie ta boîte mail avant de te connecter.";
+      errEl.textContent = "Account created. If email confirmation is enabled, check your inbox before signing in.";
     }
   } catch(err){
     errEl.style.color = 'var(--red-deep)';
-    errEl.textContent = err.message || "Une erreur est survenue.";
+    errEl.textContent = err.message || "Something went wrong.";
   } finally {
     btn.disabled = false;
   }
@@ -311,12 +292,21 @@ async function insertLog(entry){
     user_id: session.user.id, issue_id: entry.issueId, date_read: entry.dateRead,
     rating: entry.rating, review: entry.review || null
   });
-  if(error){ alert("Erreur d'enregistrement : " + error.message); return false; }
+  if(error){ alert("Error saving: " + error.message); return false; }
+  return true;
+}
+async function insertLogsBatch(issueIds, entry){
+  const rows = issueIds.map(id => ({
+    user_id: session.user.id, issue_id: id, date_read: entry.dateRead,
+    rating: entry.rating, review: entry.review || null
+  }));
+  const { error } = await sb.from('logs').insert(rows);
+  if(error){ alert("Error saving: " + error.message); return false; }
   return true;
 }
 async function deleteLog(id){
   const { error } = await sb.from('logs').delete().eq('id', id);
-  if(error){ alert("Erreur de suppression : " + error.message); return false; }
+  if(error){ alert("Error deleting: " + error.message); return false; }
   return true;
 }
 async function insertIssue(issue){
@@ -325,13 +315,13 @@ async function insertIssue(issue){
     run_name: issue.runName, arc_name: issue.arcName, number: issue.number, year: issue.year,
     writer: issue.writer, artist: issue.artist, custom: true, created_by: session.user.id
   });
-  if(error){ alert("Erreur d'ajout : " + error.message); return false; }
+  if(error){ alert("Error adding: " + error.message); return false; }
   return true;
 }
 
 async function boot(){
   document.getElementById('userChip').innerHTML =
-    `<span>${escapeHtml(session.user.email)}</span><button class="logout-btn" id="logoutBtn">Déconnexion</button>`;
+    `<span>${escapeHtml(session.user.email)}</span><button class="logout-btn" id="logoutBtn">Sign out</button>`;
   document.getElementById('logoutBtn').addEventListener('click', logout);
   [issuesCache, logsCache] = await Promise.all([fetchIssues(), fetchLogs()]);
   render();
@@ -348,14 +338,22 @@ function starString(rating10){
   const full = Math.floor(rating10/2), half = rating10%2===1;
   return '★'.repeat(full) + (half?'½':'');
 }
-function fmtDate(d){ return new Date(d+'T00:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'}); }
+function fmtDate(d){ return new Date(d+'T00:00:00').toLocaleDateString('en-US', {day:'numeric', month:'short', year:'numeric'}); }
+function fmtYearRange(issues){
+  const years = issues.map(i=>i.year).filter(Boolean);
+  if(!years.length) return '';
+  const min = Math.min(...years), max = Math.max(...years);
+  return min===max ? ` (${min})` : ` (${min}–${max})`;
+}
 function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function coverEl(issue){
   const badge = isRead(issue.id) ? '<div class="read-badge">✓</div>' : '';
+  const hasRating = logsForIssue(issue.id).some(l=>l.rating!=null);
+  const ratedBadge = hasRating ? '<div class="rated-badge">★</div>' : '';
   const hasImg = !!issue.coverUrl;
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
   return `<div class="cover${hasImg?' has-img':''}" style="--accent:${issue.color}" data-issue="${issue.id}">
-    ${img}${badge}<div class="top-tag">${escapeHtml(issue.seriesTitle)}</div><div class="num">#${issue.number}</div>
+    ${img}${badge}${ratedBadge}<div class="top-tag">${escapeHtml(issue.seriesTitle)}</div><div class="num">#${issue.number}</div>
   </div>`;
 }
 function issueCardHtml(issue){
@@ -363,14 +361,55 @@ function issueCardHtml(issue){
   const rated = ls.filter(l=>l.rating!=null);
   const label = rated.length ? starString(Math.round(rated.reduce((a,l)=>a+l.rating,0)/rated.length)) : '';
   return `<div class="issue-card">${coverEl(issue)}<div class="card-meta">
-    <div class="t">#${issue.number}</div><div class="s">${escapeHtml(issue.seriesTitle)}</div>
+    <div class="t">#${issue.number}</div><div class="s">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</div>
     ${label ? `<div class="stars">${label}</div>` : ''}
   </div></div>`;
 }
+function avgRatingForIssue(id){
+  const rated = logsForIssue(id).filter(l=>l.rating!=null);
+  if(!rated.length) return null;
+  return rated.reduce((a,l)=>a+l.rating,0)/rated.length; // 0..10 scale
+}
 function filteredIssues(){
   const q = state.search.trim().toLowerCase();
-  if(!q) return issuesCache;
-  return issuesCache.filter(i => (i.seriesTitle+' '+i.writer+' '+i.artist+' '+i.arcName+' '+i.runName+' #'+i.number).toLowerCase().includes(q));
+  let list = issuesCache;
+  if(q) list = list.filter(i => (i.seriesTitle+' '+i.writer+' '+i.artist+' '+i.arcName+' '+i.runName+' #'+i.number).toLowerCase().includes(q));
+  if(state.filterYear) list = list.filter(i => String(i.year) === state.filterYear);
+  if(state.filterRating === 'unrated') list = list.filter(i => avgRatingForIssue(i.id)==null);
+  else if(state.filterRating === 'rated') list = list.filter(i => avgRatingForIssue(i.id)!=null);
+  else if(state.filterRating){ const min = parseInt(state.filterRating,10); list = list.filter(i => { const r=avgRatingForIssue(i.id); return r!=null && r>=min; }); }
+  return list;
+}
+
+/* ---------------- EXPORT ---------------- */
+function downloadFile(filename, content, mime){
+  const blob = new Blob([content], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function exportDiaryJSON(){
+  const rows = logsCache.map(l=>{
+    const iss = issueById(l.issueId);
+    return {
+      series: iss?.seriesTitle || null, issueNumber: iss?.number ?? null, storyline: iss?.arcName || null,
+      writer: iss?.writer || null, artist: iss?.artist || null,
+      dateRead: l.dateRead, ratingOutOf5: l.rating!=null ? l.rating/2 : null, review: l.review || null
+    };
+  });
+  downloadFile('panel-diary.json', JSON.stringify(rows, null, 2), 'application/json');
+}
+function csvCell(v){ return `"${String(v??'').replace(/"/g,'""')}"`; }
+function exportDiaryCSV(){
+  const header = ['Series','Issue #','Storyline','Writer','Artist','Date read','Rating (out of 5)','Review'];
+  const rows = logsCache.map(l=>{
+    const iss = issueById(l.issueId);
+    return [iss?.seriesTitle, iss?.number, iss?.arcName, iss?.writer, iss?.artist, l.dateRead, l.rating!=null?(l.rating/2):'', l.review];
+  });
+  const csv = [header, ...rows].map(r=> r.map(csvCell).join(',')).join('\n');
+  downloadFile('panel-diary.csv', csv, 'text/csv');
 }
 
 /* ---------------- TABS ---------------- */
@@ -406,17 +445,17 @@ function renderHome(){
   const recentLogs = logsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,6);
   return `
   <div class="hero"><div>
-      <h1>Chaque numéro compte.</h1>
-      <p>Note, commente et archive ta lecture des comics Marvel — issue par issue, run par run.</p>
+      <h1>Every issue counts.</h1>
+      <p>Rate, review and archive your Marvel comics reading — issue by issue, storyline by storyline.</p>
     </div>
     <div class="hero-stats">
-      <div class="stat"><b>${logsCache.length}</b><span>Lectures loguées</span></div>
-      <div class="stat"><b>${distinctRead}/${total}</b><span>Numéros lus</span></div>
-      <div class="stat"><b>${avg}</b><span>Note moyenne</span></div>
+      <div class="stat"><b>${logsCache.length}</b><span>Logged reads</span></div>
+      <div class="stat"><b>${distinctRead}/${total}</b><span>Issues read</span></div>
+      <div class="stat"><b>${avg}</b><span>Average rating</span></div>
     </div></div>
-  ${recentLogs.length ? `<div class="section-title"><h2>Dernières lectures</h2></div>
+  ${recentLogs.length ? `<div class="section-title"><h2>Recent reads</h2></div>
   <div class="row-scroll">${recentLogs.map(l=>{ const iss=issueById(l.issueId); return iss?`<div style="width:140px;flex-shrink:0">${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
-  <div class="section-title"><h2>Découvrir</h2><span class="count">échantillon aléatoire</span></div>
+  <div class="section-title"><h2>Discover</h2><span class="count">random sample</span></div>
   <div class="grid">${recentIssues.map(issueCardHtml).join('')}</div>`;
 }
 
@@ -424,40 +463,70 @@ function renderBrowse(){
   const issues = filteredIssues();
   const groups = {};
   issues.forEach(i=>{
-    let key;
-    if(state.groupBy==='series') key = i.seriesTitle;
-    else if(state.groupBy==='run') key = i.seriesTitle+' — '+i.runName;
-    else key = i.seriesTitle+' — '+i.runName+' — '+i.arcName;
-    (groups[key] = groups[key]||[]).push(i);
+    let key, baseLabel;
+    if(state.groupBy==='series'){ key = i.seriesTitle; baseLabel = i.seriesTitle; }
+    else { key = i.arcName || '(untitled)'; baseLabel = i.arcName || '(untitled)'; }
+    if(!groups[key]) groups[key] = { baseLabel, issues: [] };
+    groups[key].issues.push(i);
   });
-  Object.values(groups).forEach(arr=>arr.sort((a,b)=>a.number-b.number));
-  const keys = Object.keys(groups).sort();
+  Object.values(groups).forEach(g=>{
+    g.issues.sort((a,b)=> (a.year||0)-(b.year||0) || a.seriesTitle.localeCompare(b.seriesTitle) || a.number-b.number);
+    g.label = g.baseLabel + (state.groupBy==='storyline' ? fmtYearRange(g.issues) : '');
+  });
+  lastGroups = groups;
+  const keys = Object.keys(groups).sort((a,b)=>groups[a].label.localeCompare(groups[b].label));
+  const years = Array.from(new Set(issuesCache.map(i=>i.year).filter(Boolean))).sort((a,b)=>b-a);
   return `
   <div class="browse-controls">
-    <label>Trier par</label>
+    <label>Group by</label>
     <select id="groupSelect">
-      <option value="series" ${state.groupBy==='series'?'selected':''}>Série</option>
-      <option value="run" ${state.groupBy==='run'?'selected':''}>Run</option>
-      <option value="arc" ${state.groupBy==='arc'?'selected':''}>Arc de lecture</option>
+      <option value="series" ${state.groupBy==='series'?'selected':''}>Series</option>
+      <option value="storyline" ${state.groupBy==='storyline'?'selected':''}>Storyline (across series)</option>
     </select>
-    <span style="margin-left:auto;font-size:12px;color:var(--ink-soft)">${issues.length} numéro${issues.length>1?'s':''}</span>
+    <label>Rating</label>
+    <select id="ratingSelect">
+      <option value="" ${state.filterRating===''?'selected':''}>Any rating</option>
+      <option value="rated" ${state.filterRating==='rated'?'selected':''}>Rated</option>
+      <option value="unrated" ${state.filterRating==='unrated'?'selected':''}>Not rated</option>
+      <option value="6" ${state.filterRating==='6'?'selected':''}>★3 & up</option>
+      <option value="8" ${state.filterRating==='8'?'selected':''}>★4 & up</option>
+      <option value="10" ${state.filterRating==='10'?'selected':''}>★5 only</option>
+    </select>
+    <label>Year</label>
+    <select id="yearSelect">
+      <option value="" ${state.filterYear===''?'selected':''}>All years</option>
+      ${years.map(y=>`<option value="${y}" ${state.filterYear===String(y)?'selected':''}>${y}</option>`).join('')}
+    </select>
+    <span style="margin-left:auto;font-size:12px;color:var(--ink-soft)">${issues.length} issue${issues.length!==1?'s':''}</span>
   </div>
-  ${keys.length ? keys.map(k=>`<div class="group-block"><h3>${escapeHtml(k)} <span class="n">${groups[k].length} numéros</span></h3>
-    <div class="grid">${groups[k].map(issueCardHtml).join('')}</div></div>`).join('')
-    : `<div class="empty"><span class="display">Rien ici</span>Essaie une autre recherche, ou ajoute des numéros dans l'onglet "Ajouter".</div>`}`;
+  ${keys.length ? keys.map(k=>{
+    const g = groups[k];
+    return `<div class="group-block">
+      <div class="group-head">
+        <h3>${escapeHtml(g.label)} <span class="n">${g.issues.length} issue${g.issues.length!==1?'s':''}</span></h3>
+        <button class="log-group-btn" data-group-key="${escapeHtml(k)}">Log all (${g.issues.length})</button>
+      </div>
+      <div class="grid">${g.issues.map(issueCardHtml).join('')}</div>
+    </div>`;
+  }).join('')
+    : `<div class="empty"><span class="display">Nothing here</span>Try a different search, or add issues from the "Add" tab.</div>`}`;
 }
 
 function renderDiary(){
   const sorted = logsCache.slice().sort((a,b)=> b.dateRead.localeCompare(a.dateRead) || b.loggedAt.localeCompare(a.loggedAt));
-  if(!sorted.length) return `<div class="empty"><span class="display">Journal vide</span>Logue ta première lecture depuis "Parcourir" ou "Accueil".</div>`;
-  return `<div class="section-title"><h2>Journal</h2><span class="count">${sorted.length} entrée${sorted.length>1?'s':''}</span></div>
+  if(!sorted.length) return `<div class="empty"><span class="display">Your diary is empty</span>Log your first read from "Browse" or "Home".</div>`;
+  return `<div class="section-title"><h2>Diary</h2><span class="count">${sorted.length} entr${sorted.length!==1?'ies':'y'}</span>
+    <span style="margin-left:auto;display:flex;gap:8px">
+      <button class="log-group-btn" id="exportJsonBtn">Export JSON</button>
+      <button class="log-group-btn" id="exportCsvBtn">Export CSV</button>
+    </span></div>
   ${sorted.map(l=>{
     const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry"><div class="diary-cover" style="--accent:${iss.color}"></div>
       <div class="diary-info"><div class="title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
       <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}
-      <button class="del-btn" data-del="${l.id}">Supprimer cette entrée</button></div>
+      <button class="del-btn" data-del="${l.id}">Delete this entry</button></div>
       <div class="diary-side"><span class="stars">${starString(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
   }).join('')}`;
 }
@@ -473,32 +542,32 @@ function renderStats(){
   const topWriters = Object.entries(byWriter).sort((a,b)=>b[1]-a[1]).slice(0,6);
   const maxS = Math.max(1, ...topSeries.map(s=>s[1])); const maxW = Math.max(1, ...topWriters.map(s=>s[1]));
   function bars(list,max){ return list.map(([k,v])=>`<div class="bar-row"><div>${escapeHtml(k)}</div><div class="bar-track"><div class="bar-fill" style="width:${(v/max*100)}%"></div></div><div>${v}</div></div>`).join(''); }
-  return `<div class="section-title"><h2>Statistiques</h2></div>
+  return `<div class="section-title"><h2>Stats</h2></div>
   <div class="stats-grid">
-    <div class="stat-card"><b>${logsCache.length}</b><span>Lectures totales</span></div>
-    <div class="stat-card"><b>${distinctRead}</b><span>Numéros distincts</span></div>
-    <div class="stat-card"><b>${avg}</b><span>Note moyenne / 5</span></div>
-    <div class="stat-card"><b>${Object.keys(bySeries).length}</b><span>Séries explorées</span></div>
+    <div class="stat-card"><b>${logsCache.length}</b><span>Total reads</span></div>
+    <div class="stat-card"><b>${distinctRead}</b><span>Distinct issues</span></div>
+    <div class="stat-card"><b>${avg}</b><span>Average rating / 5</span></div>
+    <div class="stat-card"><b>${Object.keys(bySeries).length}</b><span>Series explored</span></div>
   </div>
-  ${topSeries.length ? `<div class="section-title"><h2 style="font-size:20px">Séries les plus lues</h2></div><div style="margin-bottom:26px">${bars(topSeries,maxS)}</div>` : ''}
-  ${topWriters.length ? `<div class="section-title"><h2 style="font-size:20px">Scénaristes les plus lus</h2></div><div>${bars(topWriters,maxW)}</div>` : ''}
-  ${!logsCache.length ? `<div class="empty"><span class="display">Pas encore de données</span>Les statistiques apparaîtront après tes premières lectures loguées.</div>` : ''}`;
+  ${topSeries.length ? `<div class="section-title"><h2 style="font-size:20px">Most-read series</h2></div><div style="margin-bottom:26px">${bars(topSeries,maxS)}</div>` : ''}
+  ${topWriters.length ? `<div class="section-title"><h2 style="font-size:20px">Most-read writers</h2></div><div>${bars(topWriters,maxW)}</div>` : ''}
+  ${!logsCache.length ? `<div class="empty"><span class="display">No data yet</span>Stats will appear once you've logged your first reads.</div>` : ''}`;
 }
 
 function renderAdd(){
   const seriesOptions = Array.from(new Set(issuesCache.map(i=>i.seriesTitle))).sort();
-  return `<div class="section-title"><h2>Ajouter un numéro</h2></div>
-  <p class="hint" style="margin-bottom:16px;max-width:60ch">Le catalogue est partagé entre tous les comptes : ce que tu ajoutes ici devient visible pour tout le monde.</p>
+  return `<div class="section-title"><h2>Add an issue</h2></div>
+  <p class="hint" style="margin-bottom:16px;max-width:60ch">The catalog is shared across all accounts: what you add here becomes visible to everyone. Tip: reuse the exact same "Storyline" text across different series (e.g. all issues of a crossover) to have them grouped together under "Storyline" in Browse.</p>
   <form class="add-form" id="addForm">
-    <div class="full"><label>Série</label><input list="seriesList" id="f-series" placeholder="ex : Amazing Spider-Man" required>
+    <div class="full"><label>Series</label><input list="seriesList" id="f-series" placeholder="e.g. Amazing Spider-Man" required>
     <datalist id="seriesList">${seriesOptions.map(s=>`<option value="${escapeHtml(s)}">`).join('')}</datalist></div>
-    <div><label>Run / scénariste principal</label><input id="f-run" placeholder="ex : Nick Spencer" required></div>
-    <div><label>Arc de lecture</label><input id="f-arc" placeholder="ex : Sins Rising" required></div>
-    <div><label>N° d'issue</label><input id="f-number" type="number" min="0" required></div>
-    <div><label>Année</label><input id="f-year" type="number" min="1930" max="2100"></div>
-    <div><label>Scénariste</label><input id="f-writer"></div>
-    <div><label>Dessinateur·rice</label><input id="f-artist"></div>
-    <div class="full"><button type="submit" class="btn">Ajouter à la base</button></div>
+    <div><label>Run / main creative team</label><input id="f-run" placeholder="e.g. Nick Spencer" required></div>
+    <div><label>Storyline</label><input id="f-arc" placeholder="e.g. One More Day" required></div>
+    <div><label>Issue #</label><input id="f-number" type="number" min="0" required></div>
+    <div><label>Year</label><input id="f-year" type="number" min="1930" max="2100"></div>
+    <div><label>Writer</label><input id="f-writer"></div>
+    <div><label>Artist</label><input id="f-artist"></div>
+    <div class="full"><button type="submit" class="btn">Add to catalog</button></div>
   </form>`;
 }
 
@@ -506,6 +575,19 @@ function attachMainEvents(){
   document.querySelectorAll('[data-issue]').forEach(el=> el.addEventListener('click', ()=> openModal(el.dataset.issue)));
   const gs = document.getElementById('groupSelect');
   if(gs) gs.addEventListener('change', e=>{ state.groupBy = e.target.value; render(); });
+  const rs = document.getElementById('ratingSelect');
+  if(rs) rs.addEventListener('change', e=>{ state.filterRating = e.target.value; render(); });
+  const ys = document.getElementById('yearSelect');
+  if(ys) ys.addEventListener('change', e=>{ state.filterYear = e.target.value; render(); });
+  const ej = document.getElementById('exportJsonBtn');
+  if(ej) ej.addEventListener('click', exportDiaryJSON);
+  const ec = document.getElementById('exportCsvBtn');
+  if(ec) ec.addEventListener('click', exportDiaryCSV);
+  document.querySelectorAll('.log-group-btn').forEach(el=> el.addEventListener('click', ()=>{
+    const key = el.dataset.groupKey;
+    const group = lastGroups[key];
+    if(group) openBatchModal(group.label, group.issues.map(i=>i.id));
+  }));
   document.querySelectorAll('[data-del]').forEach(el=> el.addEventListener('click', async ()=>{
     if(await deleteLog(el.dataset.del)) refreshLogsAndRender();
   }));
@@ -531,7 +613,7 @@ function attachMainEvents(){
   });
 }
 
-/* ---------------- MODAL ---------------- */
+/* ---------------- SINGLE-ISSUE MODAL ---------------- */
 let modalIssueId = null, modalRating = null;
 function openModal(issueId){ modalIssueId = issueId; modalRating = null; document.getElementById('overlay').classList.add('open'); renderModal(); }
 function closeModal(){ document.getElementById('overlay').classList.remove('open'); }
@@ -546,17 +628,17 @@ function renderModal(){
         <div class="sub">${escapeHtml(issue.arcName)} — ${escapeHtml(issue.runName)}</div>
         <div class="sub">${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' · '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
       </div></div>
-    <div class="field"><label>Note (facultative)</label>
+    <div class="field"><label>Rating (optional)</label>
       <div class="star-picker" id="starPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
-      <button type="button" class="del-btn" id="clearRating" style="margin-top:2px">Effacer la note</button></div>
-    <div class="field"><label>Date de lecture</label><input type="date" id="modalDate" value="${today}" max="${today}"></div>
-    <div class="field"><label>Avis (facultatif)</label><textarea id="modalReview" placeholder="Tes impressions sur ce numéro…"></textarea></div>
-    <button class="btn" id="saveLog">Logger cette lecture</button>
-    ${past.length ? `<div class="past-logs"><h4>Historique (${past.length})</h4>
-      ${past.map(l=>`<div class="past-log-item"><span>${fmtDate(l.dateRead)} ${l.rating!=null?'· '+starString(l.rating):''}</span><button class="del-btn" data-del-modal="${l.id}">Suppr.</button></div>`).join('')}</div>` : ''}`;
+      <button type="button" class="del-btn" id="clearRating" style="margin-top:2px">Clear rating</button></div>
+    <div class="field"><label>Date read</label><input type="date" id="modalDate" value="${today}" max="${today}"></div>
+    <div class="field"><label>Review (optional)</label><textarea id="modalReview" placeholder="Your thoughts on this issue…"></textarea></div>
+    <button class="btn" id="saveLog">Log this read</button>
+    ${past.length ? `<div class="past-logs"><h4>History (${past.length})</h4>
+      ${past.map(l=>`<div class="past-log-item"><span>${fmtDate(l.dateRead)} ${l.rating!=null?'· '+starString(l.rating):''}</span><button class="del-btn" data-del-modal="${l.id}">Delete</button></div>`).join('')}</div>` : ''}`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
-  document.querySelectorAll('#starPicker span').forEach(s=> s.addEventListener('click', ()=>{ modalRating = parseInt(s.dataset.v,10); updateStarPicker(); }));
-  document.getElementById('clearRating').addEventListener('click', ()=>{ modalRating = null; updateStarPicker(); });
+  document.querySelectorAll('#starPicker span').forEach(s=> s.addEventListener('click', ()=>{ modalRating = parseInt(s.dataset.v,10); updateStarPicker('starPicker', modalRating); }));
+  document.getElementById('clearRating').addEventListener('click', ()=>{ modalRating = null; updateStarPicker('starPicker', modalRating); });
   document.getElementById('saveLog').addEventListener('click', async ()=>{
     const dateRead = document.getElementById('modalDate').value || today;
     const review = document.getElementById('modalReview').value.trim();
@@ -567,10 +649,44 @@ function renderModal(){
     if(await deleteLog(el.dataset.delModal)){ await refreshLogsAndRender(); renderModal(); }
   }));
 }
-function updateStarPicker(){
-  document.querySelectorAll('#starPicker span').forEach(s=> s.classList.toggle('filled', modalRating!=null && parseInt(s.dataset.v,10)<=modalRating));
+function updateStarPicker(pickerId, value){
+  document.querySelectorAll('#'+pickerId+' span').forEach(s=> s.classList.toggle('filled', value!=null && parseInt(s.dataset.v,10)<=value));
 }
 document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
+
+/* ---------------- BATCH (LOG A WHOLE GROUP) MODAL ---------------- */
+let batchIssueIds = null, batchRating = null, batchLabel = '';
+function openBatchModal(label, issueIds){
+  batchLabel = label; batchIssueIds = issueIds; batchRating = null;
+  document.getElementById('overlay').classList.add('open');
+  renderBatchModal();
+}
+function renderBatchModal(){
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('modal').innerHTML = `
+    <button class="close-x" id="closeModal">&times;</button>
+    <div class="modal-head"><div>
+        <h3>${escapeHtml(batchLabel)}</h3>
+        <div class="sub">${batchIssueIds.length} issue${batchIssueIds.length!==1?'s':''} will be logged with the same date, rating and review.</div>
+      </div></div>
+    <div class="field"><label>Rating (optional, applied to all)</label>
+      <div class="star-picker" id="batchStarPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
+      <button type="button" class="del-btn" id="clearBatchRating" style="margin-top:2px">Clear rating</button></div>
+    <div class="field"><label>Date read</label><input type="date" id="batchDate" value="${today}" max="${today}"></div>
+    <div class="field"><label>Review (optional, applied to all)</label><textarea id="batchReview" placeholder="Your thoughts on this run…"></textarea></div>
+    <button class="btn" id="saveBatchLog">Log all ${batchIssueIds.length} issues</button>
+    <p class="hint">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>`;
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  document.querySelectorAll('#batchStarPicker span').forEach(s=> s.addEventListener('click', ()=>{ batchRating = parseInt(s.dataset.v,10); updateStarPicker('batchStarPicker', batchRating); }));
+  document.getElementById('clearBatchRating').addEventListener('click', ()=>{ batchRating = null; updateStarPicker('batchStarPicker', batchRating); });
+  document.getElementById('saveBatchLog').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Logging…';
+    const dateRead = document.getElementById('batchDate').value || today;
+    const review = document.getElementById('batchReview').value.trim();
+    const ok = await insertLogsBatch(batchIssueIds, { dateRead, rating: batchRating, review });
+    if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; btn.textContent = `Log all ${batchIssueIds.length} issues`; }
+  });
+}
 
 /* ---------------- INIT ---------------- */
 (async function init(){
