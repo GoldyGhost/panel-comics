@@ -40,11 +40,11 @@
   .logout-btn { background: var(--paper-2); border: 2px solid var(--ink); color: var(--ink); border-radius: var(--radius); flex-shrink: 0; padding:6px 10px; font-size:11.5px; font-weight:700; }
   .user-chip { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-soft); margin-left:auto; }
   nav.tabs + .user-chip { margin-left: 0; }
-  .search-row { max-width: 1180px; margin: 0 auto; padding: 0 18px 12px; }
-  .search-row input { width: 100%; padding: 9px 12px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 14px; }
+  #searchRow { max-width: 1180px; margin: 0 auto; padding: 0 18px 12px; display: none; }
+  #searchRow input { width: 100%; padding: 9px 12px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 14px; }
 
   main { max-width: 1180px; margin: 0 auto; padding: 22px 18px 80px; }
-  .section-title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; }
+  .section-title { display: flex; align-items: baseline; gap: 10px; margin: 0 0 14px; flex-wrap: wrap; }
   .section-title h2 { font-family: 'Bangers', sans-serif; font-size: 26px; margin: 0; font-weight: 400; color: var(--red); }
   .section-title .count { font-size: 12px; color: var(--ink-soft); }
 
@@ -59,12 +59,11 @@
 
   .row-scroll { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 30px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 16px; }
-  .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); display: flex; flex-direction: column; justify-content: space-between; padding: 8px; overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; }
+  .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; }
   .cover:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 rgba(0,0,0,0.25); }
   .cover::before { content: ""; position: absolute; inset: 0; background-image: repeating-radial-gradient(circle at 6px 6px, rgba(255,255,255,0.35) 0 1.4px, transparent 1.6px 8px); mix-blend-mode: overlay; opacity: 0.55; z-index: 1; }
   .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
   .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 60%); z-index: 2; }
-  .cover .top-tag { font-size: 9.5px; font-weight: 800; color: #fff; text-shadow: 1px 1px 0 rgba(0,0,0,0.5); z-index: 3; }
   .cover .num { font-family: 'Bangers', sans-serif; font-size: 34px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); z-index: 3; line-height: 1; }
   .cover.is-read { border: 4px solid #2E8B57; box-shadow: 0 0 0 2px rgba(46,139,87,0.35), var(--card-shadow); }
   .cover .rated-badge { position: absolute; top: 6px; left: 6px; background: var(--ink); color: var(--gold); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid var(--gold); z-index: 3; }
@@ -82,7 +81,7 @@
   .log-group-btn:hover { background: var(--gold); }
 
   .diary-entry { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 2px dashed var(--line); }
-  .diary-cover { width: 56px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; }
+  .diary-cover { width: 56px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; flex-shrink: 0; }
   .diary-cover::before { content:""; position:absolute; inset:0; background-image: repeating-radial-gradient(circle at 4px 4px, rgba(255,255,255,0.3) 0 1px, transparent 1.2px 6px); mix-blend-mode: overlay;}
   .diary-info .title { font-weight: 700; font-size: 14.5px; }
   .diary-info .sub { font-size: 12px; color: var(--ink-soft); margin: 2px 0 6px; }
@@ -102,10 +101,12 @@
   .bar-track { background: var(--line); border-radius: 2px; height: 10px; overflow: hidden; }
   .bar-fill { background: var(--red); height: 100%; }
 
-  form.add-form, form.auth-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 640px; }
-  form.add-form .full, form.auth-form .full { grid-column: 1 / -1; }
-  form.add-form label, form.auth-form label { font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; }
-  form.add-form input, form.add-form select, form.auth-form input { width: 100%; padding: 9px 10px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 13.5px; }
+  .friend-row { display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+
+  form.auth-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 640px; }
+  form.auth-form .full { grid-column: 1 / -1; }
+  form.auth-form label { font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; }
+  form.auth-form input { width: 100%; padding: 9px 10px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 13.5px; }
   .btn { background: var(--red); color: #fff; border: 2px solid var(--ink); padding: 10px 18px; border-radius: var(--radius); font-weight: 800; font-size: 13.5px; box-shadow: var(--card-shadow); }
   .btn:hover { transform: translate(-1px,-1px); }
   .btn.secondary { background: var(--paper-2); color: var(--ink); }
@@ -130,11 +131,13 @@
   .field label { font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; }
   .field input[type="date"], .field textarea { width: 100%; padding: 8px 10px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 13.5px; }
   .field textarea { resize: vertical; min-height: 64px; }
+  .field.checkbox-field label { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; font-weight: 500; cursor: pointer; }
+  .field.checkbox-field input { margin-top: 2px; flex-shrink: 0; }
   .past-logs { margin-top: 18px; border-top: 2px dashed var(--line); padding-top: 12px; }
   .past-logs h4 { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin: 0 0 8px; }
   .past-log-item { display: flex; justify-content: space-between; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--line); }
 
-  /* AUTH SCREEN */
+  /* AUTH / USERNAME SCREENS */
   .auth-wrap { max-width: 420px; margin: 60px auto; padding: 0 18px; }
   .auth-card { border: 3px solid var(--ink); background: var(--paper-2); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 26px; }
   .auth-card h1 { font-family:'Bangers',sans-serif; color: var(--red); font-size: 30px; margin: 0 0 4px; font-weight: 400; }
@@ -146,6 +149,31 @@
   #configWarning code { background: var(--paper); padding: 1px 5px; border-radius: 2px; }
 
   footer { text-align: center; padding: 30px 18px 50px; font-size: 11.5px; color: var(--ink-soft); }
+
+  /* MOBILE */
+  @media (max-width: 480px) {
+    .logo .sub { display: none; }
+    nav.tabs button { padding: 6px 8px; font-size: 12.5px; }
+    main { padding: 16px 12px 70px; }
+    .hero { padding: 20px 18px; }
+    .hero h1 { font-size: 30px; }
+    .hero p { font-size: 12.5px; }
+    .hero-stats { gap: 6px; }
+    .hero-stats .stat { padding: 7px; }
+    .hero-stats .stat b { font-size: 19px; }
+    .hero-stats .stat span { font-size: 8.5px; }
+    .section-title h2 { font-size: 21px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(104px,1fr)); gap: 10px; }
+    .cover .num { font-size: 24px; }
+    .browse-controls { padding: 8px; gap: 8px; }
+    .browse-controls select { font-size: 12px; padding: 5px 6px; }
+    .diary-entry { grid-template-columns: 46px 1fr auto; gap: 10px; }
+    .diary-cover { width: 46px; }
+    .diary-info .title { font-size: 13px; }
+    .stats-grid { grid-template-columns: repeat(2,1fr); }
+    .bar-row { grid-template-columns: 92px 1fr 26px; font-size: 11.5px; }
+    .modal { padding: 16px; }
+  }
 </style>
 </head>
 <body>
@@ -167,11 +195,12 @@
         <button data-tab="home" class="active">Home</button>
         <button data-tab="browse">Browse</button>
         <button data-tab="diary">Diary</button>
+        <button data-tab="friends">Friends</button>
         <button data-tab="stats">Stats</button>
       </nav>
       <div class="user-chip" id="userChip"></div>
     </div>
-    <div class="search-row">
+    <div id="searchRow">
       <input type="text" id="searchInput" placeholder="Search an issue, series, writer…">
     </div>
   </header>
@@ -197,6 +226,18 @@
   </div>
 </div>
 
+<div id="usernameScreen" class="auth-wrap" style="display:none">
+  <div class="auth-card">
+    <h1 class="display">Pick a username</h1>
+    <p class="lede">So friends can find and follow you. Letters, numbers and underscores, 3–20 characters.</p>
+    <form class="auth-form" id="usernameForm">
+      <div class="full"><label>Username</label><input type="text" id="usernameInput" pattern="[a-zA-Z0-9_]{3,20}" required></div>
+      <div class="full"><button type="submit" class="btn">Continue</button></div>
+    </form>
+    <div class="error-msg" id="usernameError"></div>
+  </div>
+</div>
+
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
 
 <script>
@@ -213,8 +254,15 @@ const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY)
 
 /* ---------------- STATE ---------------- */
 let session = null;
+let myProfile = null;
 let issuesCache = [];
-let logsCache = [];
+let allLogsCache = [];      // everything visible under RLS (mine + followed)
+let logsCache = [];         // mine only
+let friendsLogsCache = [];  // followed users only
+let followingIds = new Set();
+let followingProfiles = {}; // id -> {id, username}
+let friendSearchQuery = '';
+let friendSearchResults = [];
 let state = { tab:'home', groupBy:'series', search:'', filterRating:'', filterYear:'' };
 let authMode = 'login';
 let lastGroups = {}; // populated by renderBrowse, used by the "Log all" batch action
@@ -222,10 +270,17 @@ let lastGroups = {}; // populated by renderBrowse, used by the "Log all" batch a
 /* ---------------- AUTH ---------------- */
 function showAuthScreen(){
   document.getElementById('app').style.display = 'none';
+  document.getElementById('usernameScreen').style.display = 'none';
   document.getElementById('authScreen').style.display = 'block';
+}
+function showUsernamePrompt(){
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('usernameScreen').style.display = 'block';
 }
 function showApp(){
   document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('usernameScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
 }
 document.getElementById('toLogin').addEventListener('click', ()=> setAuthMode('login'));
@@ -262,6 +317,20 @@ document.getElementById('authForm').addEventListener('submit', async (e)=>{
     btn.disabled = false;
   }
 });
+document.getElementById('usernameForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const username = document.getElementById('usernameInput').value.trim();
+  const errEl = document.getElementById('usernameError');
+  errEl.textContent = '';
+  const res = await createProfile(username);
+  if(!res.ok){
+    errEl.textContent = /duplicate|unique/i.test(res.message) ? 'That username is already taken.' : res.message;
+    return;
+  }
+  myProfile = { id: session.user.id, username };
+  showApp();
+  await finishBoot();
+});
 
 async function logout(){
   await sb.auth.signOut();
@@ -269,7 +338,7 @@ async function logout(){
 
 sb.auth.onAuthStateChange((_event, sess)=>{
   session = sess;
-  if(session){ showApp(); boot(); } else { showAuthScreen(); }
+  if(session){ boot(); } else { showAuthScreen(); }
 });
 
 /* ---------------- DATA ACCESS (Supabase) ---------------- */
@@ -283,9 +352,10 @@ async function fetchIssues(){
   }));
 }
 async function fetchLogs(){
+  // RLS returns own logs + logs of followed users.
   const { data, error } = await sb.from('logs').select('*').order('date_read', { ascending:false });
   if(error){ console.error(error); return []; }
-  return data.map(r=>({ id:r.id, issueId:r.issue_id, dateRead:r.date_read, rating:r.rating, review:r.review, loggedAt:r.logged_at }));
+  return data.map(r=>({ id:r.id, issueId:r.issue_id, dateRead:r.date_read, rating:r.rating, review:r.review, loggedAt:r.logged_at, userId:r.user_id }));
 }
 async function insertLog(entry){
   const { error } = await sb.from('logs').insert({
@@ -296,9 +366,10 @@ async function insertLog(entry){
   return true;
 }
 async function insertLogsBatch(issueIds, entry){
+  const loggedAt = new Date().toISOString(); // shared across the batch so the Diary can group them
   const rows = issueIds.map(id => ({
     user_id: session.user.id, issue_id: id, date_read: entry.dateRead,
-    rating: entry.rating, review: entry.review || null
+    rating: entry.rating, review: entry.review || null, logged_at: loggedAt
   }));
   const { error } = await sb.from('logs').insert(rows);
   if(error){ alert("Error saving: " + error.message); return false; }
@@ -309,16 +380,80 @@ async function deleteLog(id){
   if(error){ alert("Error deleting: " + error.message); return false; }
   return true;
 }
+async function deleteLogsBatch(ids){
+  const { error } = await sb.from('logs').delete().in('id', ids);
+  if(error){ alert("Error deleting: " + error.message); return false; }
+  return true;
+}
+async function fetchProfile(){
+  const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+  if(error){ console.error(error); return null; }
+  return data;
+}
+async function createProfile(username){
+  const { error } = await sb.from('profiles').insert({ id: session.user.id, username });
+  if(error) return { ok:false, message: error.message };
+  return { ok:true };
+}
+async function fetchFollowing(){
+  const { data, error } = await sb.from('follows').select('followee_id').eq('follower_id', session.user.id);
+  if(error){ console.error(error); return []; }
+  return data.map(r=>r.followee_id);
+}
+async function fetchProfilesByIds(ids){
+  if(!ids.length) return [];
+  const { data, error } = await sb.from('profiles').select('*').in('id', ids);
+  if(error){ console.error(error); return []; }
+  return data;
+}
+async function searchProfiles(query){
+  const { data, error } = await sb.from('profiles').select('*').ilike('username', `%${query}%`).neq('id', session.user.id).limit(20);
+  if(error){ console.error(error); return []; }
+  return data;
+}
+async function followUser(id){
+  const { error } = await sb.from('follows').insert({ follower_id: session.user.id, followee_id: id });
+  if(error){ alert("Error: " + error.message); return false; }
+  return true;
+}
+async function unfollowUser(id){
+  const { error } = await sb.from('follows').delete().eq('follower_id', session.user.id).eq('followee_id', id);
+  if(error){ alert("Error: " + error.message); return false; }
+  return true;
+}
 
 async function boot(){
-  document.getElementById('userChip').innerHTML =
-    `<span>${escapeHtml(session.user.email)}</span><button class="logout-btn" id="logoutBtn">Sign out</button>`;
+  myProfile = await fetchProfile();
+  if(!myProfile){ showUsernamePrompt(); return; }
+  showApp();
+  await finishBoot();
+}
+async function finishBoot(){
+  document.getElementById('userChip').innerHTML = `<button class="logout-btn" id="logoutBtn">Sign out</button>`;
   document.getElementById('logoutBtn').addEventListener('click', logout);
-  [issuesCache, logsCache] = await Promise.all([fetchIssues(), fetchLogs()]);
+  const [issues, allLogs, followIds] = await Promise.all([fetchIssues(), fetchLogs(), fetchFollowing()]);
+  issuesCache = issues;
+  splitLogs(allLogs);
+  followingIds = new Set(followIds);
+  const profs = await fetchProfilesByIds([...followingIds]);
+  followingProfiles = {}; profs.forEach(p=> followingProfiles[p.id] = p);
   render();
 }
-async function refreshLogsAndRender(){ logsCache = await fetchLogs(); render(); }
+function splitLogs(allLogs){
+  allLogsCache = allLogs;
+  logsCache = allLogs.filter(l=> l.userId === session.user.id);
+  friendsLogsCache = allLogs.filter(l=> l.userId !== session.user.id);
+}
+async function refreshLogsAndRender(){ splitLogs(await fetchLogs()); render(); }
 async function refreshIssuesAndRender(){ issuesCache = await fetchIssues(); render(); }
+async function refreshFriendsAndRender(){
+  const [allLogs, followIds] = await Promise.all([fetchLogs(), fetchFollowing()]);
+  splitLogs(allLogs);
+  followingIds = new Set(followIds);
+  const profs = await fetchProfilesByIds([...followingIds]);
+  followingProfiles = {}; profs.forEach(p=> followingProfiles[p.id] = p);
+  render();
+}
 
 /* ---------------- HELPERS ---------------- */
 function issueById(id){ return issuesCache.find(i=>i.id===id); }
@@ -344,8 +479,13 @@ function coverEl(issue){
   const hasImg = !!issue.coverUrl;
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
   return `<div class="cover${hasImg?' has-img':''}${isReadIssue?' is-read':''}" style="--accent:${issue.color}" data-issue="${issue.id}">
-    ${img}${ratedBadge}<div class="top-tag">${escapeHtml(issue.seriesTitle)}</div><div class="num">#${issue.number}</div>
+    ${img}${ratedBadge}<div class="num">#${issue.number}</div>
   </div>`;
+}
+function diaryCoverEl(issue){
+  const hasImg = !!issue.coverUrl;
+  const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
+  return `<div class="diary-cover${hasImg?' has-img':''}" style="--accent:${issue.color}">${img}</div>`;
 }
 function issueCardHtml(issue){
   const ls = logsForIssue(issue.id);
@@ -376,6 +516,9 @@ function filteredIssues(){
 function setTab(tab){
   state.tab = tab;
   document.querySelectorAll('#tabs button').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
+  const searchRow = document.getElementById('searchRow');
+  if(tab==='browse'){ searchRow.style.display = 'block'; }
+  else { searchRow.style.display = 'none'; state.search=''; document.getElementById('searchInput').value=''; }
   render();
 }
 document.getElementById('tabs').addEventListener('click', e=>{
@@ -391,6 +534,7 @@ function render(){
   if(state.tab==='home') main.innerHTML = renderHome();
   else if(state.tab==='browse') main.innerHTML = renderBrowse();
   else if(state.tab==='diary') main.innerHTML = renderDiary();
+  else if(state.tab==='friends') main.innerHTML = renderFriends();
   else if(state.tab==='stats') main.innerHTML = renderStats();
   attachMainEvents();
 }
@@ -423,14 +567,14 @@ function renderBrowse(){
   const groups = {};
   issues.forEach(i=>{
     let key, baseLabel;
-    if(state.groupBy==='series'){ key = i.seriesTitle; baseLabel = i.seriesTitle; }
+    if(state.groupBy==='series'){ key = i.seriesId; baseLabel = i.seriesTitle; }
     else { key = i.arcName || '(untitled)'; baseLabel = i.arcName || '(untitled)'; }
     if(!groups[key]) groups[key] = { baseLabel, issues: [] };
     groups[key].issues.push(i);
   });
   Object.values(groups).forEach(g=>{
     g.issues.sort((a,b)=> (a.year||0)-(b.year||0) || a.seriesTitle.localeCompare(b.seriesTitle) || a.number-b.number);
-    g.label = g.baseLabel + (state.groupBy==='storyline' ? fmtYearRange(g.issues) : '');
+    g.label = g.baseLabel + fmtYearRange(g.issues); // year shown for series too, so same-named series across eras don't get confused
   });
   lastGroups = groups;
   const keys = Object.keys(groups).sort((a,b)=>groups[a].label.localeCompare(groups[b].label));
@@ -468,22 +612,65 @@ function renderBrowse(){
       <div class="grid">${g.issues.map(issueCardHtml).join('')}</div>
     </div>`;
   }).join('')
-    : `<div class="empty"><span class="display">Nothing here</span>Try a different search, or add issues from the "Add" tab.</div>`}`;
+    : `<div class="empty"><span class="display">Nothing here</span>Try a different search.</div>`}`;
 }
 
 function renderDiary(){
   const sorted = logsCache.slice().sort((a,b)=> b.dateRead.localeCompare(a.dateRead) || b.loggedAt.localeCompare(a.loggedAt));
   if(!sorted.length) return `<div class="empty"><span class="display">Your diary is empty</span>Log your first read from "Browse" or "Home".</div>`;
+  const groups = [];
+  const byLoggedAt = new Map();
+  sorted.forEach(l=>{
+    if(!byLoggedAt.has(l.loggedAt)){ const g=[]; byLoggedAt.set(l.loggedAt, g); groups.push(g); }
+    byLoggedAt.get(l.loggedAt).push(l);
+  });
   return `<div class="section-title"><h2>Diary</h2><span class="count">${sorted.length} entr${sorted.length!==1?'ies':'y'}</span></div>
-  ${sorted.map(l=>{
-    const iss = issueById(l.issueId); if(!iss) return '';
-    return `<div class="diary-entry"><div class="diary-cover" style="--accent:${iss.color}"></div>
+  ${groups.map(renderDiaryGroup).join('')}`;
+}
+function renderDiaryGroup(group){
+  if(group.length === 1){
+    const l = group[0]; const iss = issueById(l.issueId); if(!iss) return '';
+    return `<div class="diary-entry">${diaryCoverEl(iss)}
       <div class="diary-info"><div class="title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
       <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}
       <button class="del-btn" data-del="${l.id}">Delete this entry</button></div>
       <div class="diary-side"><span class="stars">${starString(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
-  }).join('')}`;
+  }
+  const first = group[0];
+  const firstIssue = issueById(first.issueId);
+  const arcNames = new Set(group.map(l=>{ const i=issueById(l.issueId); return i ? i.arcName : null; }).filter(Boolean));
+  const label = arcNames.size === 1 ? [...arcNames][0] : `${group.length} issues logged together`;
+  const ids = group.map(l=>l.id).join(',');
+  return `<div class="diary-entry">${firstIssue ? diaryCoverEl(firstIssue) : '<div class="diary-cover"></div>'}
+    <div class="diary-info"><div class="title">${escapeHtml(label)}</div>
+    <div class="sub">${group.length} issues logged at once</div>
+    ${first.review ? `<div class="review">${escapeHtml(first.review)}</div>` : ''}
+    <button class="del-btn" data-del-batch="${ids}">Delete this entry</button></div>
+    <div class="diary-side"><span class="stars">${starString(first.rating)}</span>${fmtDate(first.dateRead)}</div></div>`;
+}
+
+function renderFriends(){
+  const activity = friendsLogsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,50);
+  return `
+  <div class="section-title"><h2>Friends</h2></div>
+  <div class="browse-controls">
+    <input type="text" id="friendSearchInput" placeholder="Search by username…" value="${escapeHtml(friendSearchQuery)}" style="flex:1;min-width:160px;padding:8px 10px;border:2px solid var(--ink);border-radius:var(--radius);background:var(--paper);font-size:13px">
+  </div>
+  ${friendSearchResults.length ? `<div class="group-block"><h3 style="margin-bottom:10px">Results</h3>
+    ${friendSearchResults.map(p=>`<div class="friend-row"><span>@${escapeHtml(p.username)}</span>
+      <button class="log-group-btn" data-follow-toggle="${p.id}">${followingIds.has(p.id)?'Unfollow':'Follow'}</button></div>`).join('')}
+  </div>` : (friendSearchQuery.trim() ? `<p class="hint" style="margin-bottom:20px">No users found.</p>` : '')}
+  <div class="section-title"><h2 style="font-size:20px">Activity</h2></div>
+  ${activity.length ? activity.map(l=>{
+    const iss = issueById(l.issueId); if(!iss) return '';
+    const p = followingProfiles[l.userId];
+    return `<div class="diary-entry">${diaryCoverEl(iss)}
+      <div class="diary-info"><div class="title">@${escapeHtml(p?p.username:'someone')} logged ${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
+      <div class="sub">${escapeHtml(iss.arcName)}</div>
+      ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
+      <div class="diary-side"><span class="stars">${starString(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
+  }).join('') : `<div class="empty"><span class="display">No activity yet</span>Search above and follow people to see their reads here.</div>`}`;
 }
 
 function renderStats(){
@@ -517,13 +704,30 @@ function attachMainEvents(){
   if(rs) rs.addEventListener('change', e=>{ state.filterRating = e.target.value; render(); });
   const ys = document.getElementById('yearSelect');
   if(ys) ys.addEventListener('change', e=>{ state.filterYear = e.target.value; render(); });
-  document.querySelectorAll('.log-group-btn').forEach(el=> el.addEventListener('click', ()=>{
+  document.querySelectorAll('.log-group-btn[data-group-key]').forEach(el=> el.addEventListener('click', ()=>{
     const key = el.dataset.groupKey;
     const group = lastGroups[key];
     if(group) openBatchModal(group.label, group.issues.map(i=>i.id));
   }));
   document.querySelectorAll('[data-del]').forEach(el=> el.addEventListener('click', async ()=>{
     if(await deleteLog(el.dataset.del)) refreshLogsAndRender();
+  }));
+  document.querySelectorAll('[data-del-batch]').forEach(el=> el.addEventListener('click', async ()=>{
+    const ids = el.dataset.delBatch.split(',');
+    if(await deleteLogsBatch(ids)) refreshLogsAndRender();
+  }));
+  const fsi = document.getElementById('friendSearchInput');
+  if(fsi) fsi.addEventListener('input', async e=>{
+    friendSearchQuery = e.target.value;
+    friendSearchResults = friendSearchQuery.trim() ? await searchProfiles(friendSearchQuery.trim()) : [];
+    render();
+    const el = document.getElementById('friendSearchInput');
+    if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+  });
+  document.querySelectorAll('[data-follow-toggle]').forEach(el=> el.addEventListener('click', async ()=>{
+    const id = el.dataset.followToggle;
+    const ok = followingIds.has(id) ? await unfollowUser(id) : await followUser(id);
+    if(ok) await refreshFriendsAndRender();
   }));
 }
 
@@ -535,6 +739,7 @@ function renderModal(){
   const issue = issueById(modalIssueId);
   const past = logsForIssue(modalIssueId);
   const today = new Date().toISOString().slice(0,10);
+  const lowerIssues = issuesCache.filter(i=> i.seriesId===issue.seriesId && i.number < issue.number);
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
     <div class="modal-head">${coverEl(issue)}<div>
@@ -546,16 +751,22 @@ function renderModal(){
       <div class="star-picker" id="starPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearRating" style="margin-top:2px">Clear rating</button></div>
     <div class="field"><label>Review (optional)</label><textarea id="modalReview" placeholder="Your thoughts on this issue…"></textarea></div>
+    ${lowerIssues.length ? `<div class="field checkbox-field"><label><input type="checkbox" id="alsoLogLower"> Also log all earlier issues of ${escapeHtml(issue.seriesTitle)} (#${Math.min(...lowerIssues.map(i=>i.number))}–#${Math.max(...lowerIssues.map(i=>i.number))}, ${lowerIssues.length} issue${lowerIssues.length!==1?'s':''})</label></div>` : ''}
     <button class="btn" id="saveLog">Log this read</button>
     ${past.length ? `<div class="past-logs"><h4>History (${past.length})</h4>
       ${past.map(l=>`<div class="past-log-item"><span>${fmtDate(l.dateRead)} ${l.rating!=null?'· '+starString(l.rating):''}</span><button class="del-btn" data-del-modal="${l.id}">Delete</button></div>`).join('')}</div>` : ''}`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
   document.querySelectorAll('#starPicker span').forEach(s=> s.addEventListener('click', ()=>{ modalRating = parseInt(s.dataset.v,10); updateStarPicker('starPicker', modalRating); }));
   document.getElementById('clearRating').addEventListener('click', ()=>{ modalRating = null; updateStarPicker('starPicker', modalRating); });
-  document.getElementById('saveLog').addEventListener('click', async ()=>{
+  document.getElementById('saveLog').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget; btn.disabled = true;
     const review = document.getElementById('modalReview').value.trim();
+    const alsoLower = document.getElementById('alsoLogLower');
     const ok = await insertLog({ issueId: modalIssueId, dateRead: today, rating: modalRating, review });
-    if(ok){ closeModal(); refreshLogsAndRender(); }
+    if(ok && alsoLower && alsoLower.checked && lowerIssues.length){
+      await insertLogsBatch(lowerIssues.map(i=>i.id), { dateRead: today, rating: modalRating, review });
+    }
+    if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; }
   });
   document.querySelectorAll('[data-del-modal]').forEach(el=> el.addEventListener('click', async ()=>{
     if(await deleteLog(el.dataset.delModal)){ await refreshLogsAndRender(); renderModal(); }
@@ -574,7 +785,6 @@ function openBatchModal(label, issueIds){
   renderBatchModal();
 }
 function renderBatchModal(){
-  const today = new Date().toISOString().slice(0,10);
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
     <div class="modal-head"><div>
@@ -591,6 +801,7 @@ function renderBatchModal(){
   document.querySelectorAll('#batchStarPicker span').forEach(s=> s.addEventListener('click', ()=>{ batchRating = parseInt(s.dataset.v,10); updateStarPicker('batchStarPicker', batchRating); }));
   document.getElementById('clearBatchRating').addEventListener('click', ()=>{ batchRating = null; updateStarPicker('batchStarPicker', batchRating); });
   document.getElementById('saveBatchLog').addEventListener('click', async (e)=>{
+    const today = new Date().toISOString().slice(0,10);
     const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Logging…';
     const review = document.getElementById('batchReview').value.trim();
     const ok = await insertLogsBatch(batchIssueIds, { dateRead: today, rating: batchRating, review });
@@ -602,7 +813,7 @@ function renderBatchModal(){
 (async function init(){
   const { data } = await sb.auth.getSession();
   session = data.session;
-  if(session){ showApp(); boot(); } else { showAuthScreen(); }
+  if(session){ boot(); } else { showAuthScreen(); }
 })();
 
 })();
