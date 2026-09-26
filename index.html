@@ -17,6 +17,16 @@
     --line: rgba(27,22,15,0.16); --card-shadow: 4px 4px 0 rgba(27,22,15,0.18); --radius: 3px;
     padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #17140F; --paper-2: #201B14; --ink: #F2EBDA; --ink-soft: #C9BEA9;
+      --line: rgba(242,235,218,0.14); --card-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #17140F; --paper-2: #201B14; --ink: #F2EBDA; --ink-soft: #C9BEA9;
+    --line: rgba(242,235,218,0.14); --card-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+  }
   html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
   * { box-sizing: border-box; }
   body {
@@ -38,8 +48,11 @@
   nav.tabs button.active { background: var(--ink); color: var(--paper); }
   nav.tabs button:not(.active):hover { border-color: var(--ink); color: var(--ink); }
   .logout-btn { background: var(--paper-2); border: 2px solid var(--ink); color: var(--ink); border-radius: var(--radius); flex-shrink: 0; padding:6px 10px; font-size:11.5px; font-weight:700; }
-  .user-chip { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--ink-soft); margin-left:auto; }
+  .user-chip { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--ink-soft); margin-left:auto; }
   nav.tabs + .user-chip { margin-left: 0; }
+  .theme-switch { width: 42px; height: 22px; border-radius: 12px; background: var(--ink); border: 2px solid var(--ink); position: relative; padding: 0; flex-shrink: 0; }
+  .theme-switch .knob { position: absolute; top: 1px; left: 1px; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); transition: transform 0.15s ease; }
+  .theme-switch.on .knob { transform: translateX(20px); }
   #searchRow { max-width: 1180px; margin: 0 auto; padding: 0 18px 12px; display: none; }
   #searchRow input { width: 100%; padding: 9px 12px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 14px; }
 
@@ -65,7 +78,7 @@
   .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
   .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 60%); z-index: 2; }
   .cover .num { font-family: 'Bangers', sans-serif; font-size: 34px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); z-index: 3; line-height: 1; }
-  .cover.is-read { border: 4px solid #2E8B57; box-shadow: 0 0 0 2px rgba(46,139,87,0.35), var(--card-shadow); }
+  .cover .read-badge { position: absolute; bottom: 8px; right: 9px; font-family: 'Bangers', sans-serif; font-size: 22px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); z-index: 3; line-height: 1; }
   .cover .rated-badge { position: absolute; top: 6px; left: 6px; background: var(--ink); color: var(--gold); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid var(--gold); z-index: 3; }
   .card-meta { margin-top: 7px; font-size: 12px; line-height: 1.3; }
   .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; letter-spacing: 1px; }
@@ -73,6 +86,7 @@
   .browse-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; border: 2px solid var(--ink); background: var(--paper-2); border-radius: var(--radius); padding: 10px 12px; }
   .browse-controls label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin-right: 4px; }
   .browse-controls select { padding: 6px 8px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 13px; }
+  .browse-controls input[type="text"] { padding: 8px 10px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 13px; }
   .group-block { margin-bottom: 30px; }
   .group-block .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; padding-bottom: 6px; margin-bottom: 12px; border-bottom: 2px solid var(--ink); }
   .group-block h3 { font-size: 15px; margin: 0; }
@@ -117,25 +131,41 @@
   .overlay { position: fixed; inset: 0; background: rgba(10,8,5,0.6); display: none; align-items: flex-end; justify-content: center; z-index: 50; }
   .overlay.open { display: flex; }
   @media (min-width: 640px) { .overlay { align-items: center; } }
-  .modal { background: var(--paper); border: 3px solid var(--ink); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
-  @media (min-width: 640px) { .modal { border-radius: var(--radius); } }
-  .modal-head { display: flex; gap: 14px; margin-bottom: 16px; }
+  .modal { background: var(--paper); border: 4px solid var(--ink); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); position: relative; }
+  @media (min-width: 640px) { .modal { border-radius: 6px; } }
+  .modal::before { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: repeating-radial-gradient(circle at 6px 6px, rgba(0,0,0,0.05) 0 1.4px, transparent 1.6px 9px); opacity: 0.6; }
+  .modal-head { display: flex; gap: 14px; margin-bottom: 16px; position: relative; }
   .modal-head .cover { width: 70px; flex-shrink: 0; cursor: default; }
   .modal-head h3 { margin: 0 0 3px; font-size: 18px; }
   .modal-head .sub { font-size: 12.5px; color: var(--ink-soft); }
-  .close-x { position: sticky; top: 0; float: right; background: none; border: none; font-size: 22px; color: var(--ink-soft); line-height: 1; }
+  .close-x { position: sticky; top: 0; float: right; background: none; border: none; font-size: 22px; color: var(--ink-soft); line-height: 1; z-index: 2; }
   .star-picker { display: flex; gap: 3px; font-size: 26px; color: var(--line); margin: 6px 0 4px; }
   .star-picker span { cursor: pointer; }
   .star-picker span.filled { color: var(--gold); }
-  .field { margin-bottom: 12px; }
+  .field { margin-bottom: 12px; position: relative; }
   .field label { font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; }
-  .field input[type="date"], .field textarea { width: 100%; padding: 8px 10px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 13.5px; }
-  .field textarea { resize: vertical; min-height: 64px; }
+  .field input[type="date"], .field select { width: 100%; padding: 8px 10px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 13.5px; }
+  .speech-bubble { position: relative; background: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: 12px 14px 16px; margin-top: 6px; }
+  .speech-bubble::after { content: ""; position: absolute; left: 24px; bottom: -14px; width: 0; height: 0; border: 10px solid transparent; border-top-color: var(--ink); }
+  .speech-bubble::before { content: ""; position: absolute; left: 26px; bottom: -9px; width: 0; height: 0; border: 8px solid transparent; border-top-color: #fff; z-index: 1; }
+  .speech-bubble textarea { width: 100%; border: none; background: transparent; color: #1B160F; font-size: 13.5px; resize: vertical; min-height: 56px; padding: 0; }
+  .speech-bubble textarea:focus { outline: none; }
   .field.checkbox-field label { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; font-weight: 500; cursor: pointer; }
   .field.checkbox-field input { margin-top: 2px; flex-shrink: 0; }
   .past-logs { margin-top: 18px; border-top: 2px dashed var(--line); padding-top: 12px; }
   .past-logs h4 { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin: 0 0 8px; }
   .past-log-item { display: flex; justify-content: space-between; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .burst-btn {
+    display: block; width: 100%; margin: 6px 0 4px; padding: 14px 10px; border: none;
+    background: var(--red); color: #fff; font-family: 'Bangers', sans-serif; font-size: 22px;
+    letter-spacing: 0.04em; text-shadow: 1px 1px 0 rgba(0,0,0,0.35); cursor: pointer;
+    clip-path: polygon(4% 12%, 16% 2%, 30% 10%, 44% 1%, 58% 9%, 72% 1%, 86% 10%, 98% 2%, 92% 24%,
+      100% 38%, 90% 50%, 100% 62%, 91% 76%, 98% 90%, 84% 92%, 71% 99%, 58% 91%, 44% 99%, 30% 91%,
+      16% 99%, 8% 88%, 1% 74%, 9% 60%, 0% 46%, 10% 34%, 2% 20%);
+    transition: transform 0.1s ease;
+  }
+  .burst-btn:hover { transform: scale(1.03); }
+  .burst-btn:disabled { opacity: 0.6; }
 
   /* AUTH / USERNAME SCREENS */
   .auth-wrap { max-width: 420px; margin: 60px auto; padding: 0 18px; }
@@ -173,6 +203,7 @@
     .stats-grid { grid-template-columns: repeat(2,1fr); }
     .bar-row { grid-template-columns: 92px 1fr 26px; font-size: 11.5px; }
     .modal { padding: 16px; }
+    .burst-btn { font-size: 18px; padding: 18px 10px; }
   }
 </style>
 </head>
@@ -195,10 +226,13 @@
         <button data-tab="home" class="active">Home</button>
         <button data-tab="browse">Browse</button>
         <button data-tab="diary">Diary</button>
+        <button data-tab="watchlist">Watch List</button>
         <button data-tab="friends">Friends</button>
         <button data-tab="stats">Stats</button>
       </nav>
-      <div class="user-chip" id="userChip"></div>
+      <div class="user-chip" id="userChip">
+        <button class="theme-switch" id="themeSwitch" aria-label="Toggle dark mode"><span class="knob"></span></button>
+      </div>
     </div>
     <div id="searchRow">
       <input type="text" id="searchInput" placeholder="Search an issue, series, writer…">
@@ -252,6 +286,22 @@ if(!cfg.SUPABASE_URL || cfg.SUPABASE_URL.includes("VOTRE-PROJET") || cfg.SUPABAS
 }
 const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
 
+/* ---------------- THEME ---------------- */
+function applyTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('themeSwitch').classList.toggle('on', t==='dark');
+  localStorage.setItem('panel_theme', t);
+}
+(function initTheme(){
+  const saved = localStorage.getItem('panel_theme');
+  if(saved){ applyTheme(saved); }
+  else { document.getElementById('themeSwitch').classList.toggle('on', window.matchMedia('(prefers-color-scheme: dark)').matches); }
+})();
+document.getElementById('themeSwitch').addEventListener('click', ()=>{
+  const cur = document.documentElement.getAttribute('data-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+});
+
 /* ---------------- STATE ---------------- */
 let session = null;
 let myProfile = null;
@@ -261,8 +311,13 @@ let logsCache = [];         // mine only
 let friendsLogsCache = [];  // followed users only
 let followingIds = new Set();
 let followingProfiles = {}; // id -> {id, username}
+let followerIds = new Set();
+let followerProfiles = {};  // id -> {id, username}
 let friendSearchQuery = '';
 let friendSearchResults = [];
+let watchlists = [];        // [{id, name}]
+let watchlistItems = [];    // [{watchlist_id, issue_id}]
+let newWatchlistNameDraft = '';
 let state = { tab:'home', groupBy:'series', search:'', filterRating:'', filterYear:'' };
 let authMode = 'login';
 let lastGroups = {}; // populated by renderBrowse, used by the "Log all" batch action
@@ -400,6 +455,11 @@ async function fetchFollowing(){
   if(error){ console.error(error); return []; }
   return data.map(r=>r.followee_id);
 }
+async function fetchFollowers(){
+  const { data, error } = await sb.from('follows').select('follower_id').eq('followee_id', session.user.id);
+  if(error){ console.error(error); return []; }
+  return data.map(r=>r.follower_id);
+}
 async function fetchProfilesByIds(ids){
   if(!ids.length) return [];
   const { data, error } = await sb.from('profiles').select('*').in('id', ids);
@@ -421,6 +481,31 @@ async function unfollowUser(id){
   if(error){ alert("Error: " + error.message); return false; }
   return true;
 }
+async function fetchWatchlists(){
+  const { data, error } = await sb.from('watchlists').select('*').order('created_at');
+  if(error){ console.error(error); return []; }
+  return data;
+}
+async function fetchWatchlistItems(){
+  const { data, error } = await sb.from('watchlist_items').select('*');
+  if(error){ console.error(error); return []; }
+  return data;
+}
+async function createWatchlist(name){
+  const { data, error } = await sb.from('watchlists').insert({ user_id: session.user.id, name }).select().single();
+  if(error){ alert("Error: " + error.message); return null; }
+  return data;
+}
+async function addToWatchlist(watchlistId, issueId){
+  const { error } = await sb.from('watchlist_items').insert({ watchlist_id: watchlistId, issue_id: issueId });
+  if(error){ alert("Error: " + error.message); return false; }
+  return true;
+}
+async function removeFromWatchlist(watchlistId, issueId){
+  const { error } = await sb.from('watchlist_items').delete().eq('watchlist_id', watchlistId).eq('issue_id', issueId);
+  if(error){ alert("Error: " + error.message); return false; }
+  return true;
+}
 
 async function boot(){
   myProfile = await fetchProfile();
@@ -429,14 +514,20 @@ async function boot(){
   await finishBoot();
 }
 async function finishBoot(){
-  document.getElementById('userChip').innerHTML = `<button class="logout-btn" id="logoutBtn">Sign out</button>`;
+  document.getElementById('userChip').insertAdjacentHTML('afterbegin', `<button class="logout-btn" id="logoutBtn">Sign out</button>`);
   document.getElementById('logoutBtn').addEventListener('click', logout);
-  const [issues, allLogs, followIds] = await Promise.all([fetchIssues(), fetchLogs(), fetchFollowing()]);
+  const [issues, allLogs, followingList, followerList, wls, wlItems] = await Promise.all([
+    fetchIssues(), fetchLogs(), fetchFollowing(), fetchFollowers(), fetchWatchlists(), fetchWatchlistItems()
+  ]);
   issuesCache = issues;
   splitLogs(allLogs);
-  followingIds = new Set(followIds);
-  const profs = await fetchProfilesByIds([...followingIds]);
-  followingProfiles = {}; profs.forEach(p=> followingProfiles[p.id] = p);
+  followingIds = new Set(followingList);
+  followerIds = new Set(followerList);
+  watchlists = wls;
+  watchlistItems = wlItems;
+  const profs = await fetchProfilesByIds([...new Set([...followingIds, ...followerIds])]);
+  followingProfiles = {}; followerProfiles = {};
+  profs.forEach(p=>{ followingProfiles[p.id] = p; followerProfiles[p.id] = p; });
   render();
 }
 function splitLogs(allLogs){
@@ -447,11 +538,18 @@ function splitLogs(allLogs){
 async function refreshLogsAndRender(){ splitLogs(await fetchLogs()); render(); }
 async function refreshIssuesAndRender(){ issuesCache = await fetchIssues(); render(); }
 async function refreshFriendsAndRender(){
-  const [allLogs, followIds] = await Promise.all([fetchLogs(), fetchFollowing()]);
+  const [allLogs, followingList, followerList] = await Promise.all([fetchLogs(), fetchFollowing(), fetchFollowers()]);
   splitLogs(allLogs);
-  followingIds = new Set(followIds);
-  const profs = await fetchProfilesByIds([...followingIds]);
-  followingProfiles = {}; profs.forEach(p=> followingProfiles[p.id] = p);
+  followingIds = new Set(followingList);
+  followerIds = new Set(followerList);
+  const profs = await fetchProfilesByIds([...new Set([...followingIds, ...followerIds])]);
+  followingProfiles = {}; followerProfiles = {};
+  profs.forEach(p=>{ followingProfiles[p.id] = p; followerProfiles[p.id] = p; });
+  render();
+}
+async function refreshWatchlistsAndRender(){
+  const [wls, wlItems] = await Promise.all([fetchWatchlists(), fetchWatchlistItems()]);
+  watchlists = wls; watchlistItems = wlItems;
   render();
 }
 
@@ -474,12 +572,13 @@ function fmtYearRange(issues){
 function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function coverEl(issue){
   const isReadIssue = isRead(issue.id);
+  const readBadge = isReadIssue ? '<div class="read-badge">✓</div>' : '';
   const hasRating = logsForIssue(issue.id).some(l=>l.rating!=null);
   const ratedBadge = hasRating ? '<div class="rated-badge">★</div>' : '';
   const hasImg = !!issue.coverUrl;
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
-  return `<div class="cover${hasImg?' has-img':''}${isReadIssue?' is-read':''}" style="--accent:${issue.color}" data-issue="${issue.id}">
-    ${img}${ratedBadge}<div class="num">#${issue.number}</div>
+  return `<div class="cover${hasImg?' has-img':''}" style="--accent:${issue.color}" data-issue="${issue.id}">
+    ${img}${ratedBadge}${readBadge}<div class="num">#${issue.number}</div>
   </div>`;
 }
 function diaryCoverEl(issue){
@@ -511,6 +610,21 @@ function filteredIssues(){
   else if(state.filterRating){ const min = parseInt(state.filterRating,10); list = list.filter(i => { const r=avgRatingForIssue(i.id); return r!=null && r>=min; }); }
   return list;
 }
+function computeContinueSeries(){
+  const loggedIds = new Set(logsCache.map(l=>l.issueId));
+  const bySeriesLoggedNumbers = {};
+  issuesCache.forEach(i=>{ if(loggedIds.has(i.id)){ (bySeriesLoggedNumbers[i.seriesId] = bySeriesLoggedNumbers[i.seriesId]||[]).push(i.number); } });
+  const results = [];
+  Object.keys(bySeriesLoggedNumbers).forEach(sid=>{
+    const maxLogged = Math.max(...bySeriesLoggedNumbers[sid]);
+    const candidates = issuesCache.filter(i=> i.seriesId===sid && i.number>maxLogged && !loggedIds.has(i.id));
+    if(candidates.length){
+      candidates.sort((a,b)=>a.number-b.number);
+      results.push(candidates[0]);
+    }
+  });
+  return results.slice(0,10);
+}
 
 /* ---------------- TABS ---------------- */
 function setTab(tab){
@@ -534,6 +648,7 @@ function render(){
   if(state.tab==='home') main.innerHTML = renderHome();
   else if(state.tab==='browse') main.innerHTML = renderBrowse();
   else if(state.tab==='diary') main.innerHTML = renderDiary();
+  else if(state.tab==='watchlist') main.innerHTML = renderWatchlist();
   else if(state.tab==='friends') main.innerHTML = renderFriends();
   else if(state.tab==='stats') main.innerHTML = renderStats();
   attachMainEvents();
@@ -546,6 +661,7 @@ function renderHome(){
   const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/2).toFixed(1) : '—';
   const recentIssues = issuesCache.slice().sort(()=>0.5-Math.random()).slice(0,10);
   const recentLogs = logsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,6);
+  const continueList = computeContinueSeries();
   return `
   <div class="hero"><div>
       <h1>Every issue counts.</h1>
@@ -558,6 +674,8 @@ function renderHome(){
     </div></div>
   ${recentLogs.length ? `<div class="section-title"><h2>Recent reads</h2></div>
   <div class="row-scroll">${recentLogs.map(l=>{ const iss=issueById(l.issueId); return iss?`<div style="width:140px;flex-shrink:0">${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
+  ${continueList.length ? `<div class="section-title"><h2>Continue the series</h2><span class="count">next unread issue</span></div>
+  <div class="row-scroll">${continueList.map(i=>`<div style="width:140px;flex-shrink:0">${issueCardHtml(i)}</div>`).join('')}</div>` : ''}
   <div class="section-title"><h2>Discover</h2><span class="count">random sample</span></div>
   <div class="grid">${recentIssues.map(issueCardHtml).join('')}</div>`;
 }
@@ -650,17 +768,42 @@ function renderDiaryGroup(group){
     <div class="diary-side"><span class="stars">${starString(first.rating)}</span>${fmtDate(first.dateRead)}</div></div>`;
 }
 
+function renderWatchlist(){
+  const listsWithItems = watchlists.map(w=>({ ...w, items: watchlistItems.filter(it=>it.watchlist_id===w.id) }));
+  const allIssueIds = new Set(watchlistItems.map(it=>it.issue_id));
+  const allIssues = issuesCache.filter(i=>allIssueIds.has(i.id));
+  return `
+  <div class="section-title"><h2>Watch List</h2></div>
+  <div class="browse-controls">
+    <input type="text" id="newWatchlistName" placeholder="New list name…" value="${escapeHtml(newWatchlistNameDraft)}">
+    <button class="log-group-btn" id="createWatchlistBtn">Create list</button>
+  </div>
+  ${listsWithItems.map(w=>`
+    <div class="group-block">
+      <div class="group-head"><h3>${escapeHtml(w.name)} <span class="n">${w.items.length} issue${w.items.length!==1?'s':''}</span></h3></div>
+      <div class="grid">${w.items.map(it=>{ const iss=issueById(it.issue_id); return iss?issueCardHtml(iss):''; }).join('') || '<p class="hint">Empty — add issues here from any issue page.</p>'}</div>
+    </div>`).join('')}
+  ${allIssues.length ? `<div class="section-title"><h2 style="font-size:20px">All watchlisted issues</h2></div><div class="grid">${allIssues.map(issueCardHtml).join('')}</div>` : ''}
+  ${!watchlists.length ? `<div class="empty"><span class="display">No watch lists yet</span>Create one above, then add issues to it from any issue's page.</div>` : ''}
+  `;
+}
+
 function renderFriends(){
   const activity = friendsLogsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,50);
+  const followersNotFollowedBack = [...followerIds].filter(id=> !followingIds.has(id));
   return `
   <div class="section-title"><h2>Friends</h2></div>
   <div class="browse-controls">
-    <input type="text" id="friendSearchInput" placeholder="Search by username…" value="${escapeHtml(friendSearchQuery)}" style="flex:1;min-width:160px;padding:8px 10px;border:2px solid var(--ink);border-radius:var(--radius);background:var(--paper);font-size:13px">
+    <input type="text" id="friendSearchInput" placeholder="Search by username…" value="${escapeHtml(friendSearchQuery)}" style="flex:1;min-width:160px">
   </div>
   ${friendSearchResults.length ? `<div class="group-block"><h3 style="margin-bottom:10px">Results</h3>
     ${friendSearchResults.map(p=>`<div class="friend-row"><span>@${escapeHtml(p.username)}</span>
       <button class="log-group-btn" data-follow-toggle="${p.id}">${followingIds.has(p.id)?'Unfollow':'Follow'}</button></div>`).join('')}
   </div>` : (friendSearchQuery.trim() ? `<p class="hint" style="margin-bottom:20px">No users found.</p>` : '')}
+  ${followersNotFollowedBack.length ? `<div class="group-block"><h3 style="margin-bottom:10px">Follows you</h3>
+    ${followersNotFollowedBack.map(id=>{ const p = followerProfiles[id]; if(!p) return ''; return `<div class="friend-row"><span>@${escapeHtml(p.username)}</span>
+      <button class="log-group-btn" data-follow-toggle="${id}">Follow back</button></div>`; }).join('')}
+  </div>` : ''}
   <div class="section-title"><h2 style="font-size:20px">Activity</h2></div>
   ${activity.length ? activity.map(l=>{
     const iss = issueById(l.issueId); if(!iss) return '';
@@ -729,6 +872,15 @@ function attachMainEvents(){
     const ok = followingIds.has(id) ? await unfollowUser(id) : await followUser(id);
     if(ok) await refreshFriendsAndRender();
   }));
+  const nwn = document.getElementById('newWatchlistName');
+  if(nwn) nwn.addEventListener('input', e=>{ newWatchlistNameDraft = e.target.value; });
+  const cwb = document.getElementById('createWatchlistBtn');
+  if(cwb) cwb.addEventListener('click', async ()=>{
+    const name = (document.getElementById('newWatchlistName').value || '').trim();
+    if(!name) return;
+    const w = await createWatchlist(name);
+    if(w){ newWatchlistNameDraft = ''; await refreshWatchlistsAndRender(); }
+  });
 }
 
 /* ---------------- SINGLE-ISSUE MODAL ---------------- */
@@ -740,6 +892,7 @@ function renderModal(){
   const past = logsForIssue(modalIssueId);
   const today = new Date().toISOString().slice(0,10);
   const lowerIssues = issuesCache.filter(i=> i.seriesId===issue.seriesId && i.number < issue.number);
+  const memberships = watchlists.filter(w=> watchlistItems.some(it=>it.watchlist_id===w.id && it.issue_id===issue.id));
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
     <div class="modal-head">${coverEl(issue)}<div>
@@ -750,14 +903,40 @@ function renderModal(){
     <div class="field"><label>Rating (optional)</label>
       <div class="star-picker" id="starPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearRating" style="margin-top:2px">Clear rating</button></div>
-    <div class="field"><label>Review (optional)</label><textarea id="modalReview" placeholder="Your thoughts on this issue…"></textarea></div>
+    <div class="field"><label>Review (optional)</label>
+      <div class="speech-bubble"><textarea id="modalReview" placeholder="Your thoughts on this issue…"></textarea></div></div>
+    <div class="field"><label>Watch list</label>
+      <select id="watchlistSelect">
+        <option value="">Add to a list…</option>
+        ${watchlists.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}${watchlistItems.some(it=>it.watchlist_id===w.id && it.issue_id===issue.id)?' ✓ already in':''}</option>`).join('')}
+        <option value="__new__">+ Create new list…</option>
+      </select>
+      ${memberships.length ? `<p class="hint">In: ${memberships.map(w=>`${escapeHtml(w.name)} <button class="del-btn" data-remove-watchlist="${w.id}|${issue.id}">remove</button>`).join(' · ')}</p>` : ''}
+    </div>
     ${lowerIssues.length ? `<div class="field checkbox-field"><label><input type="checkbox" id="alsoLogLower"> Also log all earlier issues of ${escapeHtml(issue.seriesTitle)} (#${Math.min(...lowerIssues.map(i=>i.number))}–#${Math.max(...lowerIssues.map(i=>i.number))}, ${lowerIssues.length} issue${lowerIssues.length!==1?'s':''})</label></div>` : ''}
-    <button class="btn" id="saveLog">Log this read</button>
+    <button class="burst-btn" id="saveLog">LOG IT!</button>
     ${past.length ? `<div class="past-logs"><h4>History (${past.length})</h4>
       ${past.map(l=>`<div class="past-log-item"><span>${fmtDate(l.dateRead)} ${l.rating!=null?'· '+starString(l.rating):''}</span><button class="del-btn" data-del-modal="${l.id}">Delete</button></div>`).join('')}</div>` : ''}`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
   document.querySelectorAll('#starPicker span').forEach(s=> s.addEventListener('click', ()=>{ modalRating = parseInt(s.dataset.v,10); updateStarPicker('starPicker', modalRating); }));
   document.getElementById('clearRating').addEventListener('click', ()=>{ modalRating = null; updateStarPicker('starPicker', modalRating); });
+  document.getElementById('watchlistSelect').addEventListener('change', async (e)=>{
+    const val = e.target.value;
+    if(val === '__new__'){
+      const name = window.prompt('New watch list name:');
+      if(name && name.trim()){
+        const w = await createWatchlist(name.trim());
+        if(w){ watchlists.push(w); await addToWatchlist(w.id, issue.id); await refreshWatchlistsAndRender(); renderModal(); }
+      } else { e.target.value = ''; }
+    } else if(val){
+      const ok = await addToWatchlist(val, issue.id);
+      if(ok){ await refreshWatchlistsAndRender(); renderModal(); }
+    }
+  });
+  document.querySelectorAll('[data-remove-watchlist]').forEach(el=> el.addEventListener('click', async ()=>{
+    const [wid, iid] = el.dataset.removeWatchlist.split('|');
+    if(await removeFromWatchlist(wid, iid)){ await refreshWatchlistsAndRender(); renderModal(); }
+  }));
   document.getElementById('saveLog').addEventListener('click', async (e)=>{
     const btn = e.currentTarget; btn.disabled = true;
     const review = document.getElementById('modalReview').value.trim();
@@ -794,8 +973,9 @@ function renderBatchModal(){
     <div class="field"><label>Rating (optional, applied to all)</label>
       <div class="star-picker" id="batchStarPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearBatchRating" style="margin-top:2px">Clear rating</button></div>
-    <div class="field"><label>Review (optional, applied to all)</label><textarea id="batchReview" placeholder="Your thoughts on this run…"></textarea></div>
-    <button class="btn" id="saveBatchLog">Log all ${batchIssueIds.length} issues</button>
+    <div class="field"><label>Review (optional, applied to all)</label>
+      <div class="speech-bubble"><textarea id="batchReview" placeholder="Your thoughts on this run…"></textarea></div></div>
+    <button class="burst-btn" id="saveBatchLog">LOG ALL ${batchIssueIds.length}!</button>
     <p class="hint">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
   document.querySelectorAll('#batchStarPicker span').forEach(s=> s.addEventListener('click', ()=>{ batchRating = parseInt(s.dataset.v,10); updateStarPicker('batchStarPicker', batchRating); }));
@@ -805,7 +985,7 @@ function renderBatchModal(){
     const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Logging…';
     const review = document.getElementById('batchReview').value.trim();
     const ok = await insertLogsBatch(batchIssueIds, { dateRead: today, rating: batchRating, review });
-    if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; btn.textContent = `Log all ${batchIssueIds.length} issues`; }
+    if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; btn.textContent = `LOG ALL ${batchIssueIds.length}!`; }
   });
 }
 
