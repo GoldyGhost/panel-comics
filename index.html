@@ -133,11 +133,17 @@
   @media (min-width: 640px) { .overlay { align-items: center; } }
   .modal { background: var(--paper); border: 4px solid var(--ink); border-radius: var(--radius) var(--radius) 0 0; width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; padding: 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); position: relative; }
   @media (min-width: 640px) { .modal { border-radius: 6px; } }
-  .modal::before { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: repeating-radial-gradient(circle at 6px 6px, rgba(0,0,0,0.05) 0 1.4px, transparent 1.6px 9px); opacity: 0.6; }
-  .modal-head { display: flex; gap: 14px; margin-bottom: 16px; position: relative; }
-  .modal-head .cover { width: 70px; flex-shrink: 0; cursor: default; }
-  .modal-head h3 { margin: 0 0 3px; font-size: 18px; }
-  .modal-head .sub { font-size: 12.5px; color: var(--ink-soft); }
+  .modal::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: repeating-conic-gradient(from 0deg, rgba(232,163,23,0.12) 0deg 8deg, transparent 8deg 16deg); }
+  .modal-head.splash { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; margin-bottom: 16px; position: relative; }
+  .modal-head.splash h3 { font-family: 'Bangers', sans-serif; font-size: 30px; color: var(--red); text-shadow: 2px 2px 0 var(--ink); line-height: 1; margin: 0; }
+  .modal-head.splash .sub { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
+  .modal-head.splash .cover { width: 76px; cursor: default; margin-top: 4px; }
+  .speech-bubble { position: relative; background: #fff; border: 3px solid var(--ink); border-radius: 16px 4px 16px 4px; padding: 12px 14px 16px; margin-top: 6px; transform: rotate(-1deg); }
+  .speech-bubble::after { content: ""; position: absolute; left: 24px; bottom: -14px; width: 0; height: 0; border: 10px solid transparent; border-top-color: var(--ink); }
+  .speech-bubble::before { content: ""; position: absolute; left: 26px; bottom: -9px; width: 0; height: 0; border: 8px solid transparent; border-top-color: #fff; z-index: 1; }
+  .speech-bubble textarea { width: 100%; border: none; background: transparent; color: #1B160F; font-size: 13.5px; resize: vertical; min-height: 56px; padding: 0; transform: rotate(1deg); }
+  .speech-bubble textarea:focus { outline: none; }
+  .panel-divider { border: none; border-top: 4px solid var(--ink); margin: 16px -20px; position: relative; }
   .close-x { position: sticky; top: 0; float: right; background: none; border: none; font-size: 22px; color: var(--ink-soft); line-height: 1; z-index: 2; }
   .star-picker { display: flex; gap: 3px; font-size: 26px; color: var(--line); margin: 6px 0 4px; }
   .star-picker span { cursor: pointer; }
@@ -158,17 +164,15 @@
   .past-logs { margin-top: 18px; border-top: 2px dashed var(--line); padding-top: 12px; }
   .past-logs h4 { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin: 0 0 8px; }
   .past-log-item { display: flex; justify-content: space-between; font-size: 12.5px; padding: 6px 0; border-bottom: 1px solid var(--line); }
-  .burst-btn {
-    display: block; width: 100%; margin: 6px 0 4px; padding: 14px 10px; border: none;
-    background: var(--red); color: #fff; font-family: 'Bangers', sans-serif; font-size: 22px;
-    letter-spacing: 0.04em; text-shadow: 1px 1px 0 rgba(0,0,0,0.35); cursor: pointer;
-    clip-path: polygon(4% 12%, 16% 2%, 30% 10%, 44% 1%, 58% 9%, 72% 1%, 86% 10%, 98% 2%, 92% 24%,
-      100% 38%, 90% 50%, 100% 62%, 91% 76%, 98% 90%, 84% 92%, 71% 99%, 58% 91%, 44% 99%, 30% 91%,
-      16% 99%, 8% 88%, 1% 74%, 9% 60%, 0% 46%, 10% 34%, 2% 20%);
-    transition: transform 0.1s ease;
+  .splash-btn {
+    display: block; width: 100%; margin: 6px 0 4px; padding: 14px 10px;
+    background: var(--ink); color: var(--gold); border: 3px solid var(--gold);
+    font-family: 'Bangers', sans-serif; font-size: 22px; letter-spacing: 0.08em;
+    cursor: pointer; transform: skewX(-6deg); transition: transform 0.1s ease;
   }
-  .burst-btn:hover { transform: scale(1.03); }
-  .burst-btn:disabled { opacity: 0.6; }
+  .splash-btn span { display: inline-block; transform: skewX(6deg); }
+  .splash-btn:hover { transform: skewX(-6deg) scale(1.03); }
+  .splash-btn:disabled { opacity: 0.6; }
 
   /* AUTH / USERNAME SCREENS */
   .auth-wrap { max-width: 420px; margin: 60px auto; padding: 0 18px; }
@@ -206,7 +210,7 @@
     .stats-grid { grid-template-columns: repeat(2,1fr); }
     .bar-row { grid-template-columns: 92px 1fr 26px; font-size: 11.5px; }
     .modal { padding: 16px; }
-    .burst-btn { font-size: 18px; padding: 18px 10px; }
+    .splash-btn { font-size: 18px; padding: 18px 10px; }
   }
 </style>
 </head>
@@ -950,12 +954,11 @@ function renderModal(){
   const memberships = watchlists.filter(w=> watchlistItems.some(it=>it.watchlist_id===w.id && it.issue_id===issue.id));
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
-    <div class="caption-box"><span>Issue file</span></div>
-    <div class="modal-head">${coverEl(issue)}<div>
-        <h3>${escapeHtml(issue.seriesTitle)} #${issue.number}</h3>
-        <div class="sub">${escapeHtml(issue.arcName)} — ${escapeHtml(issue.runName)}</div>
-        <div class="sub">${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' · '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
-      </div></div>
+    <div class="modal-head splash">
+      <h3>${escapeHtml(issue.seriesTitle)} #${issue.number}</h3>
+      <div class="sub">${escapeHtml(issue.arcName)} — by ${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' & '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
+      ${coverEl(issue)}
+    </div>
     <hr class="panel-divider">
     <div class="field"><label>Rating (optional)</label>
       <div class="star-picker" id="starPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
@@ -972,7 +975,7 @@ function renderModal(){
       ${memberships.length ? `<p class="hint">In: ${memberships.map(w=>`${escapeHtml(w.name)} <button class="del-btn" data-remove-watchlist="${w.id}|${issue.id}">remove</button>`).join(' · ')}</p>` : ''}
     </div>
     ${lowerIssues.length ? `<div class="field checkbox-field"><label><input type="checkbox" id="alsoLogLower"> Also log all earlier issues of ${escapeHtml(issue.seriesTitle)} (#${Math.min(...lowerIssues.map(i=>i.number))}–#${Math.max(...lowerIssues.map(i=>i.number))}, ${lowerIssues.length} issue${lowerIssues.length!==1?'s':''})</label></div>` : ''}
-    <button class="burst-btn" id="saveLog">LOG IT!</button>
+    <button class="splash-btn" id="saveLog"><span>LOG IT!</span></button>
     ${past.length ? `<div class="past-logs"><h4>History (${past.length})</h4>
       ${past.map(l=>`<div class="past-log-item"><span>${fmtDate(l.dateRead)} ${l.rating!=null?'· '+starString(l.rating):''}</span><button class="del-btn" data-del-modal="${l.id}">Delete</button></div>`).join('')}</div>` : ''}`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
@@ -1024,28 +1027,27 @@ function openBatchModal(label, issueIds){
 function renderBatchModal(){
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
-    <div class="caption-box"><span>Batch log</span></div>
-    <div class="modal-head"><div>
-        <h3>${escapeHtml(batchLabel)}</h3>
-        <div class="sub">${batchIssueIds.length} issue${batchIssueIds.length!==1?'s':''} will be logged with the same date, rating and review.</div>
-      </div></div>
+    <div class="modal-head splash">
+      <h3>${escapeHtml(batchLabel)}</h3>
+      <div class="sub">${batchIssueIds.length} issue${batchIssueIds.length!==1?'s':''} will be logged with the same date, rating and review.</div>
+    </div>
     <hr class="panel-divider">
     <div class="field"><label>Rating (optional, applied to all)</label>
       <div class="star-picker" id="batchStarPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearBatchRating" style="margin-top:2px">Clear rating</button></div>
     <div class="field"><label>Review (optional, applied to all)</label>
       <div class="speech-bubble"><textarea id="batchReview" placeholder="Your thoughts on this run…"></textarea></div></div>
-    <button class="burst-btn" id="saveBatchLog">LOG ALL ${batchIssueIds.length}!</button>
+    <button class="splash-btn" id="saveBatchLog"><span>LOG ALL ${batchIssueIds.length}!</span></button>
     <p class="hint">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
   document.querySelectorAll('#batchStarPicker span').forEach(s=> s.addEventListener('click', ()=>{ batchRating = parseInt(s.dataset.v,10); updateStarPicker('batchStarPicker', batchRating); }));
   document.getElementById('clearBatchRating').addEventListener('click', ()=>{ batchRating = null; updateStarPicker('batchStarPicker', batchRating); });
   document.getElementById('saveBatchLog').addEventListener('click', async (e)=>{
     const today = new Date().toISOString().slice(0,10);
-    const btn = e.currentTarget; btn.disabled = true; btn.textContent = 'Logging…';
+    const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = '<span>Logging…</span>';
     const review = document.getElementById('batchReview').value.trim();
     const ok = await insertLogsBatch(batchIssueIds, { dateRead: today, rating: batchRating, review });
-    if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; btn.textContent = `LOG ALL ${batchIssueIds.length}!`; }
+    if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; btn.innerHTML = `<span>LOG ALL ${batchIssueIds.length}!</span>`; }
   });
 }
 
