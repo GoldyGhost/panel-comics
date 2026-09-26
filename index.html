@@ -73,7 +73,7 @@
   .row-scroll { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 30px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 16px; }
   .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; }
-  .cover:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 rgba(0,0,0,0.25); }
+  .cover:hover { box-shadow: 6px 6px 0 rgba(0,0,0,0.25); }
   .cover::before { content: ""; position: absolute; inset: 0; background-image: repeating-radial-gradient(circle at 6px 6px, rgba(255,255,255,0.35) 0 1.4px, transparent 1.6px 8px); mix-blend-mode: overlay; opacity: 0.55; z-index: 1; }
   .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
   .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 60%); z-index: 2; }
@@ -145,11 +145,14 @@
   .field { margin-bottom: 12px; position: relative; }
   .field label { font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; }
   .field input[type="date"], .field select { width: 100%; padding: 8px 10px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 13.5px; }
-  .speech-bubble { position: relative; background: #fff; border: 3px solid var(--ink); border-radius: 16px; padding: 12px 14px 16px; margin-top: 6px; }
+  .speech-bubble { position: relative; background: #fff; border: 3px solid var(--ink); border-radius: 26px 18px 24px 30px; padding: 12px 14px 16px; margin-top: 6px; }
   .speech-bubble::after { content: ""; position: absolute; left: 24px; bottom: -14px; width: 0; height: 0; border: 10px solid transparent; border-top-color: var(--ink); }
   .speech-bubble::before { content: ""; position: absolute; left: 26px; bottom: -9px; width: 0; height: 0; border: 8px solid transparent; border-top-color: #fff; z-index: 1; }
   .speech-bubble textarea { width: 100%; border: none; background: transparent; color: #1B160F; font-size: 13.5px; resize: vertical; min-height: 56px; padding: 0; }
   .speech-bubble textarea:focus { outline: none; }
+  .caption-box { display: inline-block; background: var(--gold); color: #1B160F; border: 2px solid var(--ink); padding: 3px 10px; font-weight: 800; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; transform: skewX(-8deg); margin-bottom: 8px; box-shadow: 2px 2px 0 rgba(0,0,0,0.3); }
+  .caption-box span { display: inline-block; transform: skewX(8deg); }
+  .panel-divider { border: none; border-top: 4px solid var(--ink); margin: 16px -20px; position: relative; }
   .field.checkbox-field label { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; font-weight: 500; cursor: pointer; }
   .field.checkbox-field input { margin-top: 2px; flex-shrink: 0; }
   .past-logs { margin-top: 18px; border-top: 2px dashed var(--line); padding-top: 12px; }
@@ -318,7 +321,7 @@ let friendSearchResults = [];
 let watchlists = [];        // [{id, name}]
 let watchlistItems = [];    // [{watchlist_id, issue_id}]
 let newWatchlistNameDraft = '';
-let state = { tab:'home', groupBy:'series', search:'', filterRating:'', filterYear:'' };
+let state = { tab:'home', groupBy:'series', search:'', filterRating:'', filterYear:'', viewingFriendId:null };
 let authMode = 'login';
 let lastGroups = {}; // populated by renderBrowse, used by the "Log all" batch action
 
@@ -514,8 +517,10 @@ async function boot(){
   await finishBoot();
 }
 async function finishBoot(){
-  document.getElementById('userChip').insertAdjacentHTML('afterbegin', `<button class="logout-btn" id="logoutBtn">Sign out</button>`);
-  document.getElementById('logoutBtn').addEventListener('click', logout);
+  if(!document.getElementById('logoutBtn')){
+    document.getElementById('userChip').insertAdjacentHTML('afterbegin', `<button class="logout-btn" id="logoutBtn">Sign out</button>`);
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+  }
   const [issues, allLogs, followingList, followerList, wls, wlItems] = await Promise.all([
     fetchIssues(), fetchLogs(), fetchFollowing(), fetchFollowers(), fetchWatchlists(), fetchWatchlistItems()
   ]);
@@ -636,7 +641,7 @@ function setTab(tab){
   render();
 }
 document.getElementById('tabs').addEventListener('click', e=>{
-  const b = e.target.closest('button[data-tab]'); if(b) setTab(b.dataset.tab);
+  const b = e.target.closest('button[data-tab]'); if(b){ state.viewingFriendId = null; setTab(b.dataset.tab); }
 });
 document.getElementById('searchInput').addEventListener('input', e=>{
   state.search = e.target.value;
@@ -654,6 +659,19 @@ function render(){
   attachMainEvents();
 }
 
+function computeFriendsRecent(){
+  const byUser = {};
+  friendsLogsCache.forEach(l=>{
+    if(!byUser[l.userId] || l.loggedAt > byUser[l.userId].loggedAt) byUser[l.userId] = l;
+  });
+  return Object.values(byUser).sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,10);
+}
+function friendRecentCardHtml(log){
+  const iss = issueById(log.issueId); if(!iss) return '';
+  const p = followingProfiles[log.userId] || followerProfiles[log.userId];
+  return `<div style="width:140px;flex-shrink:0">${issueCardHtml(iss)}<div style="font-size:11px;color:var(--ink-soft);margin-top:4px;cursor:pointer;text-decoration:underline" data-friend-user="${log.userId}">@${escapeHtml(p?p.username:'someone')}</div></div>`;
+}
+
 function renderHome(){
   const distinctRead = new Set(logsCache.map(l=>l.issueId)).size;
   const total = issuesCache.length;
@@ -662,6 +680,7 @@ function renderHome(){
   const recentIssues = issuesCache.slice().sort(()=>0.5-Math.random()).slice(0,10);
   const recentLogs = logsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,6);
   const continueList = computeContinueSeries();
+  const friendsRecent = computeFriendsRecent();
   return `
   <div class="hero"><div>
       <h1>Every issue counts.</h1>
@@ -672,10 +691,12 @@ function renderHome(){
       <div class="stat"><b>${distinctRead}/${total}</b><span>Issues read</span></div>
       <div class="stat"><b>${avg}</b><span>Average rating</span></div>
     </div></div>
-  ${recentLogs.length ? `<div class="section-title"><h2>Recent reads</h2></div>
-  <div class="row-scroll">${recentLogs.map(l=>{ const iss=issueById(l.issueId); return iss?`<div style="width:140px;flex-shrink:0">${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
   ${continueList.length ? `<div class="section-title"><h2>Continue the series</h2><span class="count">next unread issue</span></div>
   <div class="row-scroll">${continueList.map(i=>`<div style="width:140px;flex-shrink:0">${issueCardHtml(i)}</div>`).join('')}</div>` : ''}
+  ${recentLogs.length ? `<div class="section-title"><h2>Recent reads</h2></div>
+  <div class="row-scroll">${recentLogs.map(l=>{ const iss=issueById(l.issueId); return iss?`<div style="width:140px;flex-shrink:0">${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
+  ${friendsRecent.length ? `<div class="section-title"><h2>Friends' recent reads</h2></div>
+  <div class="row-scroll">${friendsRecent.map(friendRecentCardHtml).join('')}</div>` : ''}
   <div class="section-title"><h2>Discover</h2><span class="count">random sample</span></div>
   <div class="grid">${recentIssues.map(issueCardHtml).join('')}</div>`;
 }
@@ -788,8 +809,38 @@ function renderWatchlist(){
   `;
 }
 
+function renderFriendBlock(userId){
+  const p = followingProfiles[userId] || followerProfiles[userId];
+  const logs = friendsLogsCache.filter(l=>l.userId===userId).sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,5);
+  if(!logs.length) return '';
+  return `<div class="group-block">
+    <div class="group-head"><h3 data-friend-user="${userId}" style="cursor:pointer;text-decoration:underline">@${escapeHtml(p?p.username:'user')}</h3></div>
+    <div class="row-scroll">${logs.map(l=>{
+      const iss = issueById(l.issueId); if(!iss) return '';
+      return `<div style="width:150px;flex-shrink:0">${coverEl(iss)}
+        <div class="card-meta"><div class="t">#${iss.number}</div><div class="s">${escapeHtml(iss.seriesTitle)}</div>
+        ${l.rating!=null ? `<div class="stars">${starString(l.rating)}</div>` : ''}
+        ${l.review ? `<div style="font-size:11px;margin-top:2px">${escapeHtml(l.review)}</div>` : ''}
+        <div style="font-size:10.5px;color:var(--ink-soft);margin-top:2px">${fmtDate(l.dateRead)}</div></div></div>`;
+    }).join('')}</div>
+  </div>`;
+}
+function renderFriendFullDiary(userId){
+  const p = followingProfiles[userId] || followerProfiles[userId];
+  const logs = friendsLogsCache.filter(l=>l.userId===userId).sort((a,b)=> b.dateRead.localeCompare(a.dateRead));
+  return `<div class="section-title"><h2>@${escapeHtml(p?p.username:'user')}</h2><span class="count">${logs.length} logged read${logs.length!==1?'s':''}</span></div>
+  <button class="log-group-btn" id="backToFriends" style="margin-bottom:18px">← Back to Friends</button>
+  ${logs.length ? logs.map(l=>{
+    const iss = issueById(l.issueId); if(!iss) return '';
+    return `<div class="diary-entry">${diaryCoverEl(iss)}
+      <div class="diary-info"><div class="title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
+      <div class="sub">${escapeHtml(iss.arcName)}</div>
+      ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
+      <div class="diary-side"><span class="stars">${starString(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
+  }).join('') : `<div class="empty"><span class="display">No reads yet</span></div>`}`;
+}
 function renderFriends(){
-  const activity = friendsLogsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,50);
+  if(state.viewingFriendId) return renderFriendFullDiary(state.viewingFriendId);
   const followersNotFollowedBack = [...followerIds].filter(id=> !followingIds.has(id));
   return `
   <div class="section-title"><h2>Friends</h2></div>
@@ -804,16 +855,14 @@ function renderFriends(){
     ${followersNotFollowedBack.map(id=>{ const p = followerProfiles[id]; if(!p) return ''; return `<div class="friend-row"><span>@${escapeHtml(p.username)}</span>
       <button class="log-group-btn" data-follow-toggle="${id}">Follow back</button></div>`; }).join('')}
   </div>` : ''}
-  <div class="section-title"><h2 style="font-size:20px">Activity</h2></div>
-  ${activity.length ? activity.map(l=>{
-    const iss = issueById(l.issueId); if(!iss) return '';
-    const p = followingProfiles[l.userId];
-    return `<div class="diary-entry">${diaryCoverEl(iss)}
-      <div class="diary-info"><div class="title">@${escapeHtml(p?p.username:'someone')} logged ${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
-      <div class="sub">${escapeHtml(iss.arcName)}</div>
-      ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
-      <div class="diary-side"><span class="stars">${starString(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
-  }).join('') : `<div class="empty"><span class="display">No activity yet</span>Search above and follow people to see their reads here.</div>`}`;
+  <div class="section-title"><h2 style="font-size:20px">Following</h2></div>
+  ${followingIds.size ? `<div class="group-block">
+    ${[...followingIds].map(id=>{ const p = followingProfiles[id]; if(!p) return ''; const mutual = followerIds.has(id);
+      return `<div class="friend-row"><span data-friend-user="${id}" style="cursor:pointer;text-decoration:underline">@${escapeHtml(p.username)}</span><span class="hint" style="margin:0">${mutual?'Follows you back':'Not following you back'}</span></div>`;
+    }).join('')}
+  </div>` : `<p class="hint" style="margin-bottom:20px">You're not following anyone yet — search above to find people.</p>`}
+  <div class="section-title"><h2 style="font-size:20px">Recent activity</h2></div>
+  ${followingIds.size ? [...followingIds].map(renderFriendBlock).join('') || `<div class="empty"><span class="display">No activity yet</span>The people you follow haven't logged anything.</div>` : ''}`;
 }
 
 function renderStats(){
@@ -872,6 +921,12 @@ function attachMainEvents(){
     const ok = followingIds.has(id) ? await unfollowUser(id) : await followUser(id);
     if(ok) await refreshFriendsAndRender();
   }));
+  document.querySelectorAll('[data-friend-user]').forEach(el=> el.addEventListener('click', ()=>{
+    state.viewingFriendId = el.dataset.friendUser;
+    setTab('friends');
+  }));
+  const backBtn = document.getElementById('backToFriends');
+  if(backBtn) backBtn.addEventListener('click', ()=>{ state.viewingFriendId = null; render(); });
   const nwn = document.getElementById('newWatchlistName');
   if(nwn) nwn.addEventListener('input', e=>{ newWatchlistNameDraft = e.target.value; });
   const cwb = document.getElementById('createWatchlistBtn');
@@ -895,16 +950,19 @@ function renderModal(){
   const memberships = watchlists.filter(w=> watchlistItems.some(it=>it.watchlist_id===w.id && it.issue_id===issue.id));
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
+    <div class="caption-box"><span>Issue file</span></div>
     <div class="modal-head">${coverEl(issue)}<div>
         <h3>${escapeHtml(issue.seriesTitle)} #${issue.number}</h3>
         <div class="sub">${escapeHtml(issue.arcName)} — ${escapeHtml(issue.runName)}</div>
         <div class="sub">${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' · '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
       </div></div>
+    <hr class="panel-divider">
     <div class="field"><label>Rating (optional)</label>
       <div class="star-picker" id="starPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearRating" style="margin-top:2px">Clear rating</button></div>
     <div class="field"><label>Review (optional)</label>
       <div class="speech-bubble"><textarea id="modalReview" placeholder="Your thoughts on this issue…"></textarea></div></div>
+    <hr class="panel-divider">
     <div class="field"><label>Watch list</label>
       <select id="watchlistSelect">
         <option value="">Add to a list…</option>
@@ -966,10 +1024,12 @@ function openBatchModal(label, issueIds){
 function renderBatchModal(){
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
+    <div class="caption-box"><span>Batch log</span></div>
     <div class="modal-head"><div>
         <h3>${escapeHtml(batchLabel)}</h3>
         <div class="sub">${batchIssueIds.length} issue${batchIssueIds.length!==1?'s':''} will be logged with the same date, rating and review.</div>
       </div></div>
+    <hr class="panel-divider">
     <div class="field"><label>Rating (optional, applied to all)</label>
       <div class="star-picker" id="batchStarPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearBatchRating" style="margin-top:2px">Clear rating</button></div>
