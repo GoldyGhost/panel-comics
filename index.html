@@ -14,18 +14,18 @@
     box-sizing: border-box;
     --paper: #EFE7D4; --paper-2: #E4D9BE; --ink: #1B160F; --ink-soft: #4A4038;
     --red: #C8202A; --red-deep: #97141C; --gold: #E8A317; --blue: #1E3A8A;
-    --line: rgba(27,22,15,0.16); --card-shadow: 4px 4px 0 rgba(27,22,15,0.18); --radius: 3px;
+    --line: rgba(27,22,15,0.16); --card-shadow: 4px 4px 0 rgba(27,22,15,0.18); --radius: 3px; --hover-shadow: rgba(0,0,0,0.25);
     padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --paper: #17140F; --paper-2: #201B14; --ink: #F2EBDA; --ink-soft: #C9BEA9;
-      --line: rgba(242,235,218,0.14); --card-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+      --line: rgba(242,235,218,0.14); --card-shadow: 4px 4px 0 rgba(0,0,0,0.5); --hover-shadow: rgba(232,163,23,0.4);
     }
   }
   :root[data-theme="dark"] {
     --paper: #17140F; --paper-2: #201B14; --ink: #F2EBDA; --ink-soft: #C9BEA9;
-    --line: rgba(242,235,218,0.14); --card-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+    --line: rgba(242,235,218,0.14); --card-shadow: 4px 4px 0 rgba(0,0,0,0.5); --hover-shadow: rgba(232,163,23,0.4);
   }
   html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
   * { box-sizing: border-box; }
@@ -73,7 +73,7 @@
   .row-scroll { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 30px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 16px; }
   .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; }
-  .cover:hover { box-shadow: 6px 6px 0 rgba(0,0,0,0.25); }
+  .cover:hover { box-shadow: 6px 6px 0 var(--hover-shadow); }
   .cover::before { content: ""; position: absolute; inset: 0; background-image: repeating-radial-gradient(circle at 6px 6px, rgba(255,255,255,0.35) 0 1.4px, transparent 1.6px 8px); mix-blend-mode: overlay; opacity: 0.55; z-index: 1; }
   .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
   .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 60%); z-index: 2; }
@@ -137,13 +137,10 @@
   .modal-head.splash { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; margin-bottom: 16px; position: relative; }
   .modal-head.splash h3 { font-family: 'Bangers', sans-serif; font-size: 30px; color: var(--red); text-shadow: 2px 2px 0 var(--ink); line-height: 1; margin: 0; }
   .modal-head.splash .sub { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
-  .modal-head.splash .cover { width: 76px; cursor: default; margin-top: 4px; }
-  .speech-bubble { position: relative; background: #fff; border: 3px solid var(--ink); border-radius: 16px 4px 16px 4px; padding: 12px 14px 16px; margin-top: 6px; transform: rotate(-1deg); }
-  .speech-bubble::after { content: ""; position: absolute; left: 24px; bottom: -14px; width: 0; height: 0; border: 10px solid transparent; border-top-color: var(--ink); }
-  .speech-bubble::before { content: ""; position: absolute; left: 26px; bottom: -9px; width: 0; height: 0; border: 8px solid transparent; border-top-color: #fff; z-index: 1; }
-  .speech-bubble textarea { width: 100%; border: none; background: transparent; color: #1B160F; font-size: 13.5px; resize: vertical; min-height: 56px; padding: 0; transform: rotate(1deg); }
-  .speech-bubble textarea:focus { outline: none; }
-  .panel-divider { border: none; border-top: 4px solid var(--ink); margin: 16px -20px; position: relative; }
+  .modal-head.splash .modal-cover { width: 130px; aspect-ratio: 2/3; border: 3px solid var(--ink); border-radius: 4px; overflow: hidden; box-shadow: 4px 4px 0 rgba(0,0,0,0.18); background: var(--accent, var(--blue)); position: relative; margin-top: 6px; }
+  .speech-bubble-svg { width: 100%; height: auto; display: block; overflow: visible; margin-top: 4px; }
+  .speech-bubble-svg foreignObject textarea { width: 100%; height: 100%; border: none; background: transparent; color: #1B160F; font-size: 13.5px; resize: none; padding: 0; font-family: 'Inter', sans-serif; }
+  .speech-bubble-svg foreignObject textarea:focus { outline: none; }
   .close-x { position: sticky; top: 0; float: right; background: none; border: none; font-size: 22px; color: var(--ink-soft); line-height: 1; z-index: 2; }
   .star-picker { display: flex; gap: 3px; font-size: 26px; color: var(--line); margin: 6px 0 4px; }
   .star-picker span { cursor: pointer; }
@@ -151,14 +148,6 @@
   .field { margin-bottom: 12px; position: relative; }
   .field label { font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; }
   .field input[type="date"], .field select { width: 100%; padding: 8px 10px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 13.5px; }
-  .speech-bubble { position: relative; background: #fff; border: 3px solid var(--ink); border-radius: 26px 18px 24px 30px; padding: 12px 14px 16px; margin-top: 6px; }
-  .speech-bubble::after { content: ""; position: absolute; left: 24px; bottom: -14px; width: 0; height: 0; border: 10px solid transparent; border-top-color: var(--ink); }
-  .speech-bubble::before { content: ""; position: absolute; left: 26px; bottom: -9px; width: 0; height: 0; border: 8px solid transparent; border-top-color: #fff; z-index: 1; }
-  .speech-bubble textarea { width: 100%; border: none; background: transparent; color: #1B160F; font-size: 13.5px; resize: vertical; min-height: 56px; padding: 0; }
-  .speech-bubble textarea:focus { outline: none; }
-  .caption-box { display: inline-block; background: var(--gold); color: #1B160F; border: 2px solid var(--ink); padding: 3px 10px; font-weight: 800; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; transform: skewX(-8deg); margin-bottom: 8px; box-shadow: 2px 2px 0 rgba(0,0,0,0.3); }
-  .caption-box span { display: inline-block; transform: skewX(8deg); }
-  .panel-divider { border: none; border-top: 4px solid var(--ink); margin: 16px -20px; position: relative; }
   .field.checkbox-field label { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; font-weight: 500; cursor: pointer; }
   .field.checkbox-field input { margin-top: 2px; flex-shrink: 0; }
   .past-logs { margin-top: 18px; border-top: 2px dashed var(--line); padding-top: 12px; }
@@ -325,7 +314,7 @@ let friendSearchResults = [];
 let watchlists = [];        // [{id, name}]
 let watchlistItems = [];    // [{watchlist_id, issue_id}]
 let newWatchlistNameDraft = '';
-let state = { tab:'home', groupBy:'series', search:'', filterRating:'', filterYear:'', viewingFriendId:null };
+let state = { tab:'home', groupBy:'series', search:'', filterRating:'', filterYear:'', viewingFriendId:null, friendFilterSeries:'', friendFilterRating:'', friendSortOrder:'desc' };
 let authMode = 'login';
 let lastGroups = {}; // populated by renderBrowse, used by the "Log all" batch action
 
@@ -590,6 +579,11 @@ function coverEl(issue){
     ${img}${ratedBadge}${readBadge}<div class="num">#${issue.number}</div>
   </div>`;
 }
+function modalCoverEl(issue){
+  const hasImg = !!issue.coverUrl;
+  const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
+  return `<div class="modal-cover" style="--accent:${issue.color}">${img}</div>`;
+}
 function diaryCoverEl(issue){
   const hasImg = !!issue.coverUrl;
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
@@ -697,10 +691,10 @@ function renderHome(){
     </div></div>
   ${continueList.length ? `<div class="section-title"><h2>Continue the series</h2><span class="count">next unread issue</span></div>
   <div class="row-scroll">${continueList.map(i=>`<div style="width:140px;flex-shrink:0">${issueCardHtml(i)}</div>`).join('')}</div>` : ''}
-  ${recentLogs.length ? `<div class="section-title"><h2>Recent reads</h2></div>
-  <div class="row-scroll">${recentLogs.map(l=>{ const iss=issueById(l.issueId); return iss?`<div style="width:140px;flex-shrink:0">${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
   ${friendsRecent.length ? `<div class="section-title"><h2>Friends' recent reads</h2></div>
   <div class="row-scroll">${friendsRecent.map(friendRecentCardHtml).join('')}</div>` : ''}
+  ${recentLogs.length ? `<div class="section-title"><h2>Recent reads</h2></div>
+  <div class="row-scroll">${recentLogs.map(l=>{ const iss=issueById(l.issueId); return iss?`<div style="width:140px;flex-shrink:0">${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
   <div class="section-title"><h2>Discover</h2><span class="count">random sample</span></div>
   <div class="grid">${recentIssues.map(issueCardHtml).join('')}</div>`;
 }
@@ -831,9 +825,36 @@ function renderFriendBlock(userId){
 }
 function renderFriendFullDiary(userId){
   const p = followingProfiles[userId] || followerProfiles[userId];
-  const logs = friendsLogsCache.filter(l=>l.userId===userId).sort((a,b)=> b.dateRead.localeCompare(a.dateRead));
+  let logs = friendsLogsCache.filter(l=>l.userId===userId);
+  const allSeries = Array.from(new Set(logs.map(l=>{ const i=issueById(l.issueId); return i?i.seriesTitle:null; }).filter(Boolean))).sort();
+  if(state.friendFilterSeries) logs = logs.filter(l=>{ const i=issueById(l.issueId); return i && i.seriesTitle===state.friendFilterSeries; });
+  if(state.friendFilterRating==='unrated') logs = logs.filter(l=>l.rating==null);
+  else if(state.friendFilterRating==='rated') logs = logs.filter(l=>l.rating!=null);
+  else if(state.friendFilterRating){ const min = parseInt(state.friendFilterRating,10); logs = logs.filter(l=> l.rating!=null && l.rating>=min); }
+  logs = logs.slice().sort((a,b)=> state.friendSortOrder==='asc' ? a.dateRead.localeCompare(b.dateRead) : b.dateRead.localeCompare(a.dateRead));
   return `<div class="section-title"><h2>@${escapeHtml(p?p.username:'user')}</h2><span class="count">${logs.length} logged read${logs.length!==1?'s':''}</span></div>
   <button class="log-group-btn" id="backToFriends" style="margin-bottom:18px">← Back to Friends</button>
+  <div class="browse-controls">
+    <label>Series</label>
+    <select id="friendSeriesFilter">
+      <option value="">All series</option>
+      ${allSeries.map(s=>`<option value="${escapeHtml(s)}" ${state.friendFilterSeries===s?'selected':''}>${escapeHtml(s)}</option>`).join('')}
+    </select>
+    <label>Rating</label>
+    <select id="friendRatingFilter">
+      <option value="" ${state.friendFilterRating===''?'selected':''}>Any rating</option>
+      <option value="rated" ${state.friendFilterRating==='rated'?'selected':''}>Rated</option>
+      <option value="unrated" ${state.friendFilterRating==='unrated'?'selected':''}>Not rated</option>
+      <option value="6" ${state.friendFilterRating==='6'?'selected':''}>★3 & up</option>
+      <option value="8" ${state.friendFilterRating==='8'?'selected':''}>★4 & up</option>
+      <option value="10" ${state.friendFilterRating==='10'?'selected':''}>★5 only</option>
+    </select>
+    <label>Log date</label>
+    <select id="friendSortOrder">
+      <option value="desc" ${state.friendSortOrder!=='asc'?'selected':''}>Newest first</option>
+      <option value="asc" ${state.friendSortOrder==='asc'?'selected':''}>Oldest first</option>
+    </select>
+  </div>
   ${logs.length ? logs.map(l=>{
     const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry">${diaryCoverEl(iss)}
@@ -841,7 +862,7 @@ function renderFriendFullDiary(userId){
       <div class="sub">${escapeHtml(iss.arcName)}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
       <div class="diary-side"><span class="stars">${starString(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
-  }).join('') : `<div class="empty"><span class="display">No reads yet</span></div>`}`;
+  }).join('') : `<div class="empty"><span class="display">No reads match these filters</span></div>`}`;
 }
 function renderFriends(){
   if(state.viewingFriendId) return renderFriendFullDiary(state.viewingFriendId);
@@ -927,10 +948,17 @@ function attachMainEvents(){
   }));
   document.querySelectorAll('[data-friend-user]').forEach(el=> el.addEventListener('click', ()=>{
     state.viewingFriendId = el.dataset.friendUser;
+    state.friendFilterSeries = ''; state.friendFilterRating = ''; state.friendSortOrder = 'desc';
     setTab('friends');
   }));
   const backBtn = document.getElementById('backToFriends');
   if(backBtn) backBtn.addEventListener('click', ()=>{ state.viewingFriendId = null; render(); });
+  const fsf = document.getElementById('friendSeriesFilter');
+  if(fsf) fsf.addEventListener('change', e=>{ state.friendFilterSeries = e.target.value; render(); });
+  const frf = document.getElementById('friendRatingFilter');
+  if(frf) frf.addEventListener('change', e=>{ state.friendFilterRating = e.target.value; render(); });
+  const fso = document.getElementById('friendSortOrder');
+  if(fso) fso.addEventListener('change', e=>{ state.friendSortOrder = e.target.value; render(); });
   const nwn = document.getElementById('newWatchlistName');
   if(nwn) nwn.addEventListener('input', e=>{ newWatchlistNameDraft = e.target.value; });
   const cwb = document.getElementById('createWatchlistBtn');
@@ -957,15 +985,19 @@ function renderModal(){
     <div class="modal-head splash">
       <h3>${escapeHtml(issue.seriesTitle)} #${issue.number}</h3>
       <div class="sub">${escapeHtml(issue.arcName)} — by ${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' & '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
-      ${coverEl(issue)}
+      ${modalCoverEl(issue)}
     </div>
-    <hr class="panel-divider">
     <div class="field"><label>Rating (optional)</label>
       <div class="star-picker" id="starPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearRating" style="margin-top:2px">Clear rating</button></div>
     <div class="field"><label>Review (optional)</label>
-      <div class="speech-bubble"><textarea id="modalReview" placeholder="Your thoughts on this issue…"></textarea></div></div>
-    <hr class="panel-divider">
+      <svg class="speech-bubble-svg" viewBox="0 0 320 130">
+        <path d="M14,0 H306 A14,14 0 0 1 320,14 V86 A14,14 0 0 1 306,100 H42 L26,124 L34,100 H14 A14,14 0 0 1 0,86 V14 A14,14 0 0 1 14,0 Z" fill="#fff" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+        <foreignObject x="14" y="12" width="292" height="76">
+          <textarea xmlns="http://www.w3.org/1999/xhtml" id="modalReview" placeholder="Your thoughts on this issue…"></textarea>
+        </foreignObject>
+      </svg>
+    </div>
     <div class="field"><label>Watch list</label>
       <select id="watchlistSelect">
         <option value="">Add to a list…</option>
@@ -1031,12 +1063,17 @@ function renderBatchModal(){
       <h3>${escapeHtml(batchLabel)}</h3>
       <div class="sub">${batchIssueIds.length} issue${batchIssueIds.length!==1?'s':''} will be logged with the same date, rating and review.</div>
     </div>
-    <hr class="panel-divider">
     <div class="field"><label>Rating (optional, applied to all)</label>
       <div class="star-picker" id="batchStarPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
       <button type="button" class="del-btn" id="clearBatchRating" style="margin-top:2px">Clear rating</button></div>
     <div class="field"><label>Review (optional, applied to all)</label>
-      <div class="speech-bubble"><textarea id="batchReview" placeholder="Your thoughts on this run…"></textarea></div></div>
+      <svg class="speech-bubble-svg" viewBox="0 0 320 130">
+        <path d="M14,0 H306 A14,14 0 0 1 320,14 V86 A14,14 0 0 1 306,100 H42 L26,124 L34,100 H14 A14,14 0 0 1 0,86 V14 A14,14 0 0 1 14,0 Z" fill="#fff" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+        <foreignObject x="14" y="12" width="292" height="76">
+          <textarea xmlns="http://www.w3.org/1999/xhtml" id="batchReview" placeholder="Your thoughts on this run…"></textarea>
+        </foreignObject>
+      </svg>
+    </div>
     <button class="splash-btn" id="saveBatchLog"><span>LOG ALL ${batchIssueIds.length}!</span></button>
     <p class="hint">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
