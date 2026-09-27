@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="config.js"></script>
 <style>
   :root {
@@ -50,9 +51,10 @@
   .logout-btn { background: var(--paper-2); border: 2px solid var(--ink); color: var(--ink); border-radius: var(--radius); flex-shrink: 0; padding:6px 10px; font-size:11.5px; font-weight:700; }
   .user-chip { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--ink-soft); margin-left:auto; }
   nav.tabs + .user-chip { margin-left: 0; }
-  .theme-switch { width: 42px; height: 22px; border-radius: 12px; background: var(--ink); border: 2px solid var(--ink); position: relative; padding: 0; flex-shrink: 0; }
-  .theme-switch .knob { position: absolute; top: 1px; left: 1px; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); transition: transform 0.15s ease; }
-  .theme-switch.on .knob { transform: translateX(20px); }
+  .theme-switch, .mini-switch { width: 42px; height: 22px; border-radius: 12px; background: var(--ink); border: 2px solid var(--ink); position: relative; padding: 0; flex-shrink: 0; }
+  .theme-switch .knob, .mini-switch .knob { position: absolute; top: 1px; left: 1px; width: 14px; height: 14px; border-radius: 50%; background: var(--gold); transition: transform 0.15s ease; }
+  .theme-switch.on .knob, .mini-switch.on .knob { transform: translateX(20px); }
+  .switch-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
   #searchRow { max-width: 1180px; margin: 0 auto; padding: 0 18px 12px; display: none; }
   #searchRow input { width: 100%; padding: 9px 12px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 14px; }
 
@@ -72,16 +74,23 @@
 
   .row-scroll { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 30px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 16px; }
-  .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); display: flex; flex-direction: column; justify-content: flex-end; padding: 8px; overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; }
+  .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; -webkit-touch-callout: none; user-select: none; }
   .cover:hover { box-shadow: 6px 6px 0 var(--hover-shadow); }
   .cover::before { content: ""; position: absolute; inset: 0; background-image: repeating-radial-gradient(circle at 6px 6px, rgba(255,255,255,0.35) 0 1.4px, transparent 1.6px 8px); mix-blend-mode: overlay; opacity: 0.55; z-index: 1; }
   .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-  .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.6), transparent 60%); z-index: 2; }
-  .cover .num { font-family: 'Bangers', sans-serif; font-size: 34px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); z-index: 3; line-height: 1; }
-  .cover .read-badge { position: absolute; bottom: 8px; right: 9px; font-family: 'Bangers', sans-serif; font-size: 22px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.45); z-index: 3; line-height: 1; }
-  .cover .rated-badge { position: absolute; top: 6px; left: 6px; background: var(--ink); color: var(--gold); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid var(--gold); z-index: 3; }
+  .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.35), transparent 45%); z-index: 2; }
+  .cover .read-badge { position: absolute; top: 6px; left: 6px; background: var(--gold); color: var(--ink); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; border: 2px solid var(--ink); z-index: 3; }
+  .cover .rated-badge { position: absolute; top: 6px; right: 6px; background: var(--ink); color: var(--gold); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid var(--gold); z-index: 3; }
   .card-meta { margin-top: 7px; font-size: 12px; line-height: 1.3; }
-  .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; letter-spacing: 1px; }
+  .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; }
+
+  /* Fractional star rating (read-only display, small) */
+  .star-cell { position: relative; display: inline-block; width: 1em; }
+  .star-bg { color: var(--line); }
+  .star-fill { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--gold); }
+  /* Interactive picker: bigger, clickable */
+  .star-picker { display: flex; gap: 4px; font-size: 40px; margin: 6px 0 4px; }
+  .star-picker .star-cell { cursor: pointer; width: 1em; }
 
   .browse-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; border: 2px solid var(--ink); background: var(--paper-2); border-radius: var(--radius); padding: 10px 12px; }
   .browse-controls label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); margin-right: 4px; }
@@ -91,11 +100,12 @@
   .group-block .group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; padding-bottom: 6px; margin-bottom: 12px; border-bottom: 2px solid var(--ink); }
   .group-block h3 { font-size: 15px; margin: 0; }
   .group-block h3 .n { font-size: 11px; color: var(--ink-soft); font-weight: 500; }
-  .log-group-btn { background: var(--paper); border: 2px solid var(--ink); border-radius: var(--radius); padding: 5px 10px; font-size: 11.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  .group-head-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .log-group-btn, .log-group-btn select, select.log-group-btn { background: var(--paper); border: 2px solid var(--ink); border-radius: var(--radius); padding: 5px 10px; font-size: 11.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
   .log-group-btn:hover { background: var(--gold); }
 
   .diary-entry { display: grid; grid-template-columns: 56px 1fr auto; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 2px dashed var(--line); }
-  .diary-cover { width: 56px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; flex-shrink: 0; }
+  .diary-cover { width: 56px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; flex-shrink: 0; cursor: pointer; }
   .diary-cover::before { content:""; position:absolute; inset:0; background-image: repeating-radial-gradient(circle at 4px 4px, rgba(255,255,255,0.3) 0 1px, transparent 1.2px 6px); mix-blend-mode: overlay;}
   .diary-info .title { font-weight: 700; font-size: 14.5px; }
   .diary-info .sub { font-size: 12px; color: var(--ink-soft); margin: 2px 0 6px; }
@@ -117,6 +127,14 @@
 
   .friend-row { display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 
+  /* Reading list rows (detail view, drag-and-drop) */
+  .wl-row { display: grid; grid-template-columns: 44px 1fr auto auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .wl-row .wl-cover { width: 44px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; }
+  .wl-row .wl-title { font-size: 13px; font-weight: 700; }
+  .wl-row .wl-sub { font-size: 11px; color: var(--ink-soft); }
+  .drag-handle { cursor: grab; font-size: 18px; color: var(--ink-soft); padding: 4px 8px; }
+  .wl-row.dragging { opacity: 0.4; }
+
   form.auth-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 640px; }
   form.auth-form .full { grid-column: 1 / -1; }
   form.auth-form label { font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; }
@@ -137,14 +155,11 @@
   .modal-head.splash { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; margin-bottom: 16px; position: relative; }
   .modal-head.splash h3 { font-family: 'Bangers', sans-serif; font-size: 30px; color: var(--red); text-shadow: 2px 2px 0 var(--ink); line-height: 1; margin: 0; }
   .modal-head.splash .sub { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
-  .modal-head.splash .modal-cover { width: 130px; aspect-ratio: 2/3; border: 3px solid var(--ink); border-radius: 4px; overflow: hidden; box-shadow: 4px 4px 0 rgba(0,0,0,0.18); background: var(--accent, var(--blue)); position: relative; margin-top: 6px; }
+  .modal-head.splash .modal-cover { width: 150px; aspect-ratio: 2/3; border: 3px solid var(--ink); border-radius: 4px; overflow: hidden; box-shadow: 4px 4px 0 rgba(0,0,0,0.18); background: var(--accent, var(--blue)); position: relative; margin-top: 6px; cursor: zoom-in; }
   .speech-bubble-svg { width: 100%; height: auto; display: block; overflow: visible; margin-top: 4px; }
   .speech-bubble-svg foreignObject textarea { width: 100%; height: 100%; border: none; background: transparent; color: #1B160F; font-size: 13.5px; resize: none; padding: 0; font-family: 'Inter', sans-serif; }
   .speech-bubble-svg foreignObject textarea:focus { outline: none; }
   .close-x { position: sticky; top: 0; float: right; background: none; border: none; font-size: 22px; color: var(--ink-soft); line-height: 1; z-index: 2; }
-  .star-picker { display: flex; gap: 3px; font-size: 26px; color: var(--line); margin: 6px 0 4px; }
-  .star-picker span { cursor: pointer; }
-  .star-picker span.filled { color: var(--gold); }
   .field { margin-bottom: 12px; position: relative; }
   .field label { font-size: 12px; font-weight: 700; display: block; margin-bottom: 4px; }
   .field input[type="date"], .field select { width: 100%; padding: 8px 10px; border: 2px solid var(--ink); border-radius: var(--radius); background: var(--paper-2); color: var(--ink); font-size: 13.5px; }
@@ -162,6 +177,11 @@
   .splash-btn span { display: inline-block; transform: skewX(6deg); }
   .splash-btn:hover { transform: skewX(-6deg) scale(1.03); }
   .splash-btn:disabled { opacity: 0.6; }
+
+  /* Lightbox for full-size covers */
+  .lightbox { position: fixed; inset: 0; background: rgba(10,8,5,0.9); z-index: 70; display: none; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 92vw; max-height: 92vh; border: 4px solid var(--paper); border-radius: 6px; box-shadow: 0 0 0 3px var(--ink); }
 
   /* AUTH / USERNAME SCREENS */
   .auth-wrap { max-width: 420px; margin: 60px auto; padding: 0 18px; }
@@ -190,7 +210,6 @@
     .hero-stats .stat span { font-size: 8.5px; }
     .section-title h2 { font-size: 21px; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(104px,1fr)); gap: 10px; }
-    .cover .num { font-size: 24px; }
     .browse-controls { padding: 8px; gap: 8px; }
     .browse-controls select { font-size: 12px; padding: 5px 6px; }
     .diary-entry { grid-template-columns: 46px 1fr auto; gap: 10px; }
@@ -200,6 +219,7 @@
     .bar-row { grid-template-columns: 92px 1fr 26px; font-size: 11.5px; }
     .modal { padding: 16px; }
     .splash-btn { font-size: 18px; padding: 18px 10px; }
+    .star-picker { font-size: 32px; }
   }
 </style>
 </head>
@@ -222,7 +242,7 @@
         <button data-tab="home" class="active">Home</button>
         <button data-tab="browse">Browse</button>
         <button data-tab="diary">Diary</button>
-        <button data-tab="watchlist">Watch List</button>
+        <button data-tab="watchlist">Reading List</button>
         <button data-tab="friends">Friends</button>
         <button data-tab="stats">Stats</button>
       </nav>
@@ -269,6 +289,8 @@
 </div>
 
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div class="lightbox" id="lightbox"><img id="lightboxImg" src="" alt=""></div>
+<input type="file" id="importWatchlistFile" accept=".csv,.txt,.xlsx" style="display:none">
 
 <script>
 (function(){
@@ -298,6 +320,29 @@ document.getElementById('themeSwitch').addEventListener('click', ()=>{
   applyTheme(cur === 'dark' ? 'light' : 'dark');
 });
 
+/* ---------------- LIGHTBOX (full-size cover) ---------------- */
+function openLightbox(url){
+  if(!url) return;
+  document.getElementById('lightboxImg').src = url;
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); }
+document.getElementById('lightbox').addEventListener('click', closeLightbox);
+
+/* ---------------- LONG-PRESS (tap-and-hold on a cover = full-size) ---------------- */
+function attachLongPress(el, onLongPress){
+  let timer = null, longPressed = false;
+  const start = ()=>{ longPressed = false; timer = setTimeout(()=>{ longPressed = true; onLongPress(); }, 480); };
+  const cancel = ()=>{ if(timer){ clearTimeout(timer); timer = null; } };
+  el.addEventListener('pointerdown', start);
+  el.addEventListener('pointerup', cancel);
+  el.addEventListener('pointerleave', cancel);
+  el.addEventListener('pointercancel', cancel);
+  el.addEventListener('click', (e)=>{
+    if(longPressed){ e.preventDefault(); e.stopImmediatePropagation(); longPressed = false; }
+  }, true);
+}
+
 /* ---------------- STATE ---------------- */
 let session = null;
 let myProfile = null;
@@ -312,11 +357,15 @@ let followerProfiles = {};  // id -> {id, username}
 let friendSearchQuery = '';
 let friendSearchResults = [];
 let watchlists = [];        // [{id, name}]
-let watchlistItems = [];    // [{watchlist_id, issue_id}]
+let watchlistItems = [];    // [{watchlist_id, issue_id, position}]
 let newWatchlistNameDraft = '';
-let state = { tab:'home', groupBy:'series', search:'', filterRating:'', filterYear:'', viewingFriendId:null, friendFilterSeries:'', friendFilterRating:'', friendSortOrder:'desc' };
+let state = {
+  tab:'home', groupBy:'series', search:'', filterRating:'', filterYear:'',
+  viewingFriendId:null, friendFilterSeries:'', friendFilterRating:'', friendSortOrder:'desc',
+  viewingWatchlistId:null, watchlistShowUnreadOnly:false,
+};
 let authMode = 'login';
-let lastGroups = {}; // populated by renderBrowse, used by the "Log all" batch action
+let lastGroups = {}; // populated by renderBrowse, used by the "Log all" / "Add all" actions
 
 /* ---------------- AUTH ---------------- */
 function showAuthScreen(){
@@ -493,7 +542,19 @@ async function createWatchlist(name){
   return data;
 }
 async function addToWatchlist(watchlistId, issueId){
-  const { error } = await sb.from('watchlist_items').insert({ watchlist_id: watchlistId, issue_id: issueId });
+  const existingForList = watchlistItems.filter(it=>it.watchlist_id===watchlistId);
+  const pos = existingForList.length ? Math.max(...existingForList.map(it=>it.position||0)) + 1 : 1;
+  const { error } = await sb.from('watchlist_items').insert({ watchlist_id: watchlistId, issue_id: issueId, position: pos });
+  if(error){ alert("Error: " + error.message); return false; }
+  return true;
+}
+async function addManyToWatchlist(watchlistId, issueIds){
+  const existingForList = watchlistItems.filter(it=>it.watchlist_id===watchlistId);
+  let pos = existingForList.length ? Math.max(...existingForList.map(it=>it.position||0)) : 0;
+  const existingIssueIds = new Set(existingForList.map(it=>it.issue_id));
+  const rows = issueIds.filter(id=>!existingIssueIds.has(id)).map(id=>({ watchlist_id: watchlistId, issue_id: id, position: ++pos }));
+  if(!rows.length) return true;
+  const { error } = await sb.from('watchlist_items').upsert(rows, { onConflict: 'watchlist_id,issue_id', ignoreDuplicates: true });
   if(error){ alert("Error: " + error.message); return false; }
   return true;
 }
@@ -501,6 +562,18 @@ async function removeFromWatchlist(watchlistId, issueId){
   const { error } = await sb.from('watchlist_items').delete().eq('watchlist_id', watchlistId).eq('issue_id', issueId);
   if(error){ alert("Error: " + error.message); return false; }
   return true;
+}
+async function reorderWatchlist(watchlistId, sourceIssueId, targetIssueId){
+  const items = watchlistItems.filter(it=>it.watchlist_id===watchlistId).sort((a,b)=>(a.position||0)-(b.position||0));
+  const fromIdx = items.findIndex(it=>it.issue_id===sourceIssueId);
+  const toIdx = items.findIndex(it=>it.issue_id===targetIssueId);
+  if(fromIdx===-1 || toIdx===-1 || fromIdx===toIdx) return;
+  const [moved] = items.splice(fromIdx,1);
+  items.splice(toIdx,0,moved);
+  const rows = items.map((it,i)=>({ watchlist_id: watchlistId, issue_id: it.issue_id, position: i+1 }));
+  const { error } = await sb.from('watchlist_items').upsert(rows, { onConflict: 'watchlist_id,issue_id' });
+  if(error){ alert("Error: " + error.message); return; }
+  await refreshWatchlistsAndRender();
 }
 
 async function boot(){
@@ -555,10 +628,17 @@ async function refreshWatchlistsAndRender(){
 function issueById(id){ return issuesCache.find(i=>i.id===id); }
 function logsForIssue(id){ return logsCache.filter(l=>l.issueId===id).sort((a,b)=> b.dateRead.localeCompare(a.dateRead)); }
 function isRead(id){ return logsCache.some(l=>l.issueId===id); }
-function starString(rating10){
-  if(rating10==null) return '—';
-  const full = Math.floor(rating10/2), half = rating10%2===1;
-  return '★'.repeat(full) + (half?'½':'');
+// Rating is stored 0..20 (quarter-star units, 4 = 1 star).
+function starsHtml(rating20){
+  if(rating20==null) return '—';
+  let html = '';
+  for(let p=1;p<=5;p++){
+    const raw = rating20 - (p-1)*4;
+    const fillUnits = Math.max(0, Math.min(4, raw));
+    const pct = (fillUnits/4*100);
+    html += `<span class="star-cell"><span class="star-bg">★</span><span class="star-fill" style="width:${pct}%">★</span></span>`;
+  }
+  return html;
 }
 function fmtDate(d){ return new Date(d+'T00:00:00').toLocaleDateString('en-US', {day:'numeric', month:'short', year:'numeric'}); }
 function fmtYearRange(issues){
@@ -576,32 +656,32 @@ function coverEl(issue){
   const hasImg = !!issue.coverUrl;
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
   return `<div class="cover${hasImg?' has-img':''}" style="--accent:${issue.color}" data-issue="${issue.id}">
-    ${img}${ratedBadge}${readBadge}<div class="num">#${issue.number}</div>
+    ${img}${readBadge}${ratedBadge}
   </div>`;
 }
 function modalCoverEl(issue){
   const hasImg = !!issue.coverUrl;
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
-  return `<div class="modal-cover" style="--accent:${issue.color}">${img}</div>`;
+  return `<div class="modal-cover" id="modalCoverEl" style="--accent:${issue.color}">${img}</div>`;
 }
 function diaryCoverEl(issue){
   const hasImg = !!issue.coverUrl;
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
-  return `<div class="diary-cover${hasImg?' has-img':''}" style="--accent:${issue.color}">${img}</div>`;
+  return `<div class="diary-cover${hasImg?' has-img':''}" style="--accent:${issue.color}" data-lightbox-cover="${issue.coverUrl||''}">${img}</div>`;
 }
 function issueCardHtml(issue){
   const ls = logsForIssue(issue.id);
   const rated = ls.filter(l=>l.rating!=null);
-  const label = rated.length ? starString(Math.round(rated.reduce((a,l)=>a+l.rating,0)/rated.length)) : '';
+  const avg = rated.length ? Math.round(rated.reduce((a,l)=>a+l.rating,0)/rated.length) : null;
   return `<div class="issue-card">${coverEl(issue)}<div class="card-meta">
     <div class="t">#${issue.number}</div><div class="s">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</div>
-    ${label ? `<div class="stars">${label}</div>` : ''}
+    ${avg!=null ? `<div class="stars">${starsHtml(avg)}</div>` : ''}
   </div></div>`;
 }
 function avgRatingForIssue(id){
   const rated = logsForIssue(id).filter(l=>l.rating!=null);
   if(!rated.length) return null;
-  return rated.reduce((a,l)=>a+l.rating,0)/rated.length; // 0..10 scale
+  return rated.reduce((a,l)=>a+l.rating,0)/rated.length; // 0..20 scale
 }
 function filteredIssues(){
   const q = state.search.trim().toLowerCase();
@@ -639,7 +719,7 @@ function setTab(tab){
   render();
 }
 document.getElementById('tabs').addEventListener('click', e=>{
-  const b = e.target.closest('button[data-tab]'); if(b){ state.viewingFriendId = null; setTab(b.dataset.tab); }
+  const b = e.target.closest('button[data-tab]'); if(b){ state.viewingFriendId = null; state.viewingWatchlistId = null; setTab(b.dataset.tab); }
 });
 document.getElementById('searchInput').addEventListener('input', e=>{
   state.search = e.target.value;
@@ -674,7 +754,7 @@ function renderHome(){
   const distinctRead = new Set(logsCache.map(l=>l.issueId)).size;
   const total = issuesCache.length;
   const rated = logsCache.filter(l=>l.rating!=null);
-  const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/2).toFixed(1) : '—';
+  const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/4).toFixed(1) : '—';
   const recentIssues = issuesCache.slice().sort(()=>0.5-Math.random()).slice(0,10);
   const recentLogs = logsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,6);
   const continueList = computeContinueSeries();
@@ -711,7 +791,7 @@ function renderBrowse(){
   });
   Object.values(groups).forEach(g=>{
     g.issues.sort((a,b)=> (a.year||0)-(b.year||0) || a.seriesTitle.localeCompare(b.seriesTitle) || a.number-b.number);
-    g.label = g.baseLabel + fmtYearRange(g.issues); // year shown for series too, so same-named series across eras don't get confused
+    g.label = g.baseLabel + fmtYearRange(g.issues);
   });
   lastGroups = groups;
   const keys = Object.keys(groups).sort((a,b)=>groups[a].label.localeCompare(groups[b].label));
@@ -728,9 +808,9 @@ function renderBrowse(){
       <option value="" ${state.filterRating===''?'selected':''}>Any rating</option>
       <option value="rated" ${state.filterRating==='rated'?'selected':''}>Rated</option>
       <option value="unrated" ${state.filterRating==='unrated'?'selected':''}>Not rated</option>
-      <option value="6" ${state.filterRating==='6'?'selected':''}>★3 & up</option>
-      <option value="8" ${state.filterRating==='8'?'selected':''}>★4 & up</option>
-      <option value="10" ${state.filterRating==='10'?'selected':''}>★5 only</option>
+      <option value="12" ${state.filterRating==='12'?'selected':''}>★3 & up</option>
+      <option value="16" ${state.filterRating==='16'?'selected':''}>★4 & up</option>
+      <option value="20" ${state.filterRating==='20'?'selected':''}>★5 only</option>
     </select>
     <label>Year</label>
     <select id="yearSelect">
@@ -744,7 +824,14 @@ function renderBrowse(){
     return `<div class="group-block">
       <div class="group-head">
         <h3>${escapeHtml(g.label)} <span class="n">${g.issues.length} issue${g.issues.length!==1?'s':''}</span></h3>
-        <button class="log-group-btn" data-group-key="${escapeHtml(k)}">Log all (${g.issues.length})</button>
+        <div class="group-head-actions">
+          <button class="log-group-btn" data-group-key="${escapeHtml(k)}">Log all (${g.issues.length})</button>
+          <select class="log-group-btn" data-add-group-key="${escapeHtml(k)}">
+            <option value="">+ Add all to list…</option>
+            ${watchlists.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('')}
+            <option value="__new__">+ New list…</option>
+          </select>
+        </div>
       </div>
       <div class="grid">${g.issues.map(issueCardHtml).join('')}</div>
     </div>`;
@@ -772,7 +859,7 @@ function renderDiaryGroup(group){
       <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}
       <button class="del-btn" data-del="${l.id}">Delete this entry</button></div>
-      <div class="diary-side"><span class="stars">${starString(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
+      <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
   }
   const first = group[0];
   const firstIssue = issueById(first.issueId);
@@ -784,27 +871,60 @@ function renderDiaryGroup(group){
     <div class="sub">${group.length} issues logged at once</div>
     ${first.review ? `<div class="review">${escapeHtml(first.review)}</div>` : ''}
     <button class="del-btn" data-del-batch="${ids}">Delete this entry</button></div>
-    <div class="diary-side"><span class="stars">${starString(first.rating)}</span>${fmtDate(first.dateRead)}</div></div>`;
+    <div class="diary-side"><span class="stars">${starsHtml(first.rating)}</span>${fmtDate(first.dateRead)}</div></div>`;
 }
 
+/* ---------------- READING LIST (watchlist) ---------------- */
 function renderWatchlist(){
-  const listsWithItems = watchlists.map(w=>({ ...w, items: watchlistItems.filter(it=>it.watchlist_id===w.id) }));
-  const allIssueIds = new Set(watchlistItems.map(it=>it.issue_id));
-  const allIssues = issuesCache.filter(i=>allIssueIds.has(i.id));
+  if(state.viewingWatchlistId) return renderWatchlistDetail(state.viewingWatchlistId);
+  const listsWithItems = watchlists.map(w=>({
+    ...w,
+    items: watchlistItems.filter(it=>it.watchlist_id===w.id).sort((a,b)=>(a.position||0)-(b.position||0))
+  }));
+  let allIssueIds = new Set(watchlistItems.map(it=>it.issue_id));
+  let allIssues = issuesCache.filter(i=>allIssueIds.has(i.id));
+  if(state.watchlistShowUnreadOnly) allIssues = allIssues.filter(i=>!isRead(i.id));
   return `
-  <div class="section-title"><h2>Watch List</h2></div>
+  <div class="section-title"><h2>Reading List</h2></div>
   <div class="browse-controls">
     <input type="text" id="newWatchlistName" placeholder="New list name…" value="${escapeHtml(newWatchlistNameDraft)}">
     <button class="log-group-btn" id="createWatchlistBtn">Create list</button>
+    <button class="log-group-btn" id="importWatchlistBtn">Import CSV</button>
   </div>
   ${listsWithItems.map(w=>`
     <div class="group-block">
-      <div class="group-head"><h3>${escapeHtml(w.name)} <span class="n">${w.items.length} issue${w.items.length!==1?'s':''}</span></h3></div>
-      <div class="grid">${w.items.map(it=>{ const iss=issueById(it.issue_id); return iss?issueCardHtml(iss):''; }).join('') || '<p class="hint">Empty — add issues here from any issue page.</p>'}</div>
+      <div class="group-head">
+        <h3 data-watchlist-id="${w.id}" style="cursor:pointer;text-decoration:underline">${escapeHtml(w.name)} <span class="n">${w.items.length} issue${w.items.length!==1?'s':''}</span></h3>
+      </div>
+      <div class="grid">${w.items.slice(0,6).map(it=>{ const iss=issueById(it.issue_id); return iss?issueCardHtml(iss):''; }).join('') || '<p class="hint">Empty — add issues here from any issue page.</p>'}</div>
+      ${w.items.length > 6 ? `<button class="log-group-btn" data-watchlist-id="${w.id}" style="margin-top:10px">View all ${w.items.length} →</button>` : ''}
     </div>`).join('')}
-  ${allIssues.length ? `<div class="section-title"><h2 style="font-size:20px">All watchlisted issues</h2></div><div class="grid">${allIssues.map(issueCardHtml).join('')}</div>` : ''}
-  ${!watchlists.length ? `<div class="empty"><span class="display">No watch lists yet</span>Create one above, then add issues to it from any issue's page.</div>` : ''}
+  <div class="section-title"><h2 style="font-size:20px">All reading list issues</h2></div>
+  <div class="switch-row" style="margin-bottom:14px">
+    <button class="mini-switch${state.watchlistShowUnreadOnly?' on':''}" id="unreadOnlySwitch"><span class="knob"></span></button>
+    <span>Show unread only</span>
+  </div>
+  ${allIssues.length ? `<div class="grid">${allIssues.map(issueCardHtml).join('')}</div>` : `<div class="empty"><span class="display">Nothing to show</span>${state.watchlistShowUnreadOnly ? 'No unread issues match — try switching the toggle off.' : "Create a list above, then add issues to it from any issue's page."}</div>`}
   `;
+}
+function renderWatchlistDetail(watchlistId){
+  const w = watchlists.find(x=>x.id===watchlistId);
+  if(!w) return `<div class="empty"><span class="display">List not found</span></div>`;
+  const items = watchlistItems.filter(it=>it.watchlist_id===watchlistId).sort((a,b)=>(a.position||0)-(b.position||0));
+  return `<div class="section-title"><h2>${escapeHtml(w.name)}</h2><span class="count">${items.length} issue${items.length!==1?'s':''}</span></div>
+  <button class="log-group-btn" id="backToWatchlist" style="margin-bottom:16px">← Back to Reading List</button>
+  <p class="hint" style="margin-bottom:10px">Drag the ⠿ handle to reorder.</p>
+  ${items.length ? items.map(it=>{
+    const iss = issueById(it.issue_id); if(!iss) return '';
+    const hasImg = !!iss.coverUrl;
+    const img = hasImg ? `<img class="cover-img" src="${iss.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
+    return `<div class="wl-row" draggable="true" data-drag-issue="${it.issue_id}">
+      <div class="wl-cover" style="--accent:${iss.color}" data-issue="${iss.id}">${img}</div>
+      <div><div class="wl-title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div><div class="wl-sub">${escapeHtml(iss.arcName)}${isRead(iss.id)?' · read':''}</div></div>
+      <button class="del-btn" data-remove-watchlist="${watchlistId}|${it.issue_id}">Remove</button>
+      <span class="drag-handle">⠿</span>
+    </div>`;
+  }).join('') : `<div class="empty"><span class="display">This list is empty</span>Add issues to it from any issue's page, or from a Browse group.</div>`}`;
 }
 
 function renderFriendBlock(userId){
@@ -817,7 +937,7 @@ function renderFriendBlock(userId){
       const iss = issueById(l.issueId); if(!iss) return '';
       return `<div style="width:150px;flex-shrink:0">${coverEl(iss)}
         <div class="card-meta"><div class="t">#${iss.number}</div><div class="s">${escapeHtml(iss.seriesTitle)}</div>
-        ${l.rating!=null ? `<div class="stars">${starString(l.rating)}</div>` : ''}
+        ${l.rating!=null ? `<div class="stars">${starsHtml(l.rating)}</div>` : ''}
         ${l.review ? `<div style="font-size:11px;margin-top:2px">${escapeHtml(l.review)}</div>` : ''}
         <div style="font-size:10.5px;color:var(--ink-soft);margin-top:2px">${fmtDate(l.dateRead)}</div></div></div>`;
     }).join('')}</div>
@@ -845,9 +965,9 @@ function renderFriendFullDiary(userId){
       <option value="" ${state.friendFilterRating===''?'selected':''}>Any rating</option>
       <option value="rated" ${state.friendFilterRating==='rated'?'selected':''}>Rated</option>
       <option value="unrated" ${state.friendFilterRating==='unrated'?'selected':''}>Not rated</option>
-      <option value="6" ${state.friendFilterRating==='6'?'selected':''}>★3 & up</option>
-      <option value="8" ${state.friendFilterRating==='8'?'selected':''}>★4 & up</option>
-      <option value="10" ${state.friendFilterRating==='10'?'selected':''}>★5 only</option>
+      <option value="12" ${state.friendFilterRating==='12'?'selected':''}>★3 & up</option>
+      <option value="16" ${state.friendFilterRating==='16'?'selected':''}>★4 & up</option>
+      <option value="20" ${state.friendFilterRating==='20'?'selected':''}>★5 only</option>
     </select>
     <label>Log date</label>
     <select id="friendSortOrder">
@@ -861,7 +981,7 @@ function renderFriendFullDiary(userId){
       <div class="diary-info"><div class="title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
       <div class="sub">${escapeHtml(iss.arcName)}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
-      <div class="diary-side"><span class="stars">${starString(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
+      <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
   }).join('') : `<div class="empty"><span class="display">No reads match these filters</span></div>`}`;
 }
 function renderFriends(){
@@ -893,7 +1013,7 @@ function renderFriends(){
 function renderStats(){
   const distinctRead = new Set(logsCache.map(l=>l.issueId)).size;
   const rated = logsCache.filter(l=>l.rating!=null);
-  const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/2).toFixed(2) : '—';
+  const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/4).toFixed(2) : '—';
   const bySeries = {}; const byWriter = {};
   logsCache.forEach(l=>{ const iss=issueById(l.issueId); if(!iss) return;
     bySeries[iss.seriesTitle]=(bySeries[iss.seriesTitle]||0)+1; byWriter[iss.writer]=(byWriter[iss.writer]||0)+1; });
@@ -913,8 +1033,73 @@ function renderStats(){
   ${!logsCache.length ? `<div class="empty"><span class="display">No data yet</span>Stats will appear once you've logged your first reads.</div>` : ''}`;
 }
 
+/* ---------------- WATCHLIST CSV/TXT/XLSX IMPORT ---------------- */
+function parseWatchlistImportLine(line){
+  line = line.trim();
+  if(!line) return null;
+  let series, number;
+  if(line.includes(';')){
+    const parts = line.split(';');
+    series = parts[0].trim();
+    number = parseFloat(parts[1]);
+  } else if(line.includes(',')){
+    const parts = line.split(',');
+    series = parts[0].trim();
+    number = parseFloat(parts[1]);
+  } else {
+    const m = line.match(/^(.*?)[\s#]+(\d+(\.\d+)?)\s*$/);
+    if(m){ series = m[1].trim(); number = parseFloat(m[2]); }
+  }
+  if(!series || Number.isNaN(number)) return null;
+  return { series, number };
+}
+function normTitleForMatch(s){
+  const n = s.toLowerCase().trim();
+  return n.startsWith('the ') ? n.slice(4) : n;
+}
+async function handleWatchlistImportFile(file){
+  let text;
+  if(/\.xlsx$/i.test(file.name) && window.XLSX){
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    text = XLSX.utils.sheet_to_csv(sheet, { FS: ';' });
+  } else {
+    text = await file.text();
+  }
+  const lines = text.split(/\r?\n/);
+  const matchedIds = []; let unmatched = 0;
+  for(const line of lines){
+    const parsed = parseWatchlistImportLine(line);
+    if(!parsed) continue;
+    const norm = normTitleForMatch(parsed.series);
+    const found = issuesCache.find(i => i.number === parsed.number && normTitleForMatch(i.seriesTitle) === norm);
+    if(found) matchedIds.push(found.id); else unmatched++;
+  }
+  if(!matchedIds.length){ alert('No matching issues found in your database for this file.'); return; }
+  let listId = state.viewingWatchlistId;
+  if(!listId){
+    const name = window.prompt('Import into which list? Type an existing name, or a new one to create it:');
+    if(!name || !name.trim()) return;
+    let w = watchlists.find(x => x.name.toLowerCase() === name.trim().toLowerCase());
+    if(!w){ w = await createWatchlist(name.trim()); if(!w) return; watchlists.push(w); }
+    listId = w.id;
+  }
+  const ok = await addManyToWatchlist(listId, matchedIds);
+  if(ok){
+    await refreshWatchlistsAndRender();
+    alert(`Imported ${matchedIds.length} issue(s).${unmatched ? ' ' + unmatched + ' line(s) could not be matched.' : ''}`);
+  }
+}
+
 function attachMainEvents(){
-  document.querySelectorAll('[data-issue]').forEach(el=> el.addEventListener('click', ()=> openModal(el.dataset.issue)));
+  document.querySelectorAll('[data-issue]').forEach(el=>{
+    el.addEventListener('click', ()=> openModal(el.dataset.issue));
+    attachLongPress(el, ()=>{ const iss = issueById(el.dataset.issue); if(iss && iss.coverUrl) openLightbox(iss.coverUrl); });
+  });
+  document.querySelectorAll('[data-lightbox-cover]').forEach(el=>{
+    if(el.dataset.lightboxCover) el.addEventListener('click', ()=> openLightbox(el.dataset.lightboxCover));
+  });
   const gs = document.getElementById('groupSelect');
   if(gs) gs.addEventListener('change', e=>{ state.groupBy = e.target.value; render(); });
   const rs = document.getElementById('ratingSelect');
@@ -925,6 +1110,23 @@ function attachMainEvents(){
     const key = el.dataset.groupKey;
     const group = lastGroups[key];
     if(group) openBatchModal(group.label, group.issues.map(i=>i.id));
+  }));
+  document.querySelectorAll('select[data-add-group-key]').forEach(el=> el.addEventListener('change', async ()=>{
+    const key = el.dataset.addGroupKey;
+    const group = lastGroups[key];
+    const val = el.value;
+    if(!group || !val) return;
+    let listId = val;
+    if(val === '__new__'){
+      const name = window.prompt('New list name:');
+      if(!name || !name.trim()){ el.value=''; return; }
+      const w = await createWatchlist(name.trim());
+      if(!w){ el.value=''; return; }
+      watchlists.push(w);
+      listId = w.id;
+    }
+    const ok = await addManyToWatchlist(listId, group.issues.map(i=>i.id));
+    if(ok) await refreshWatchlistsAndRender();
   }));
   document.querySelectorAll('[data-del]').forEach(el=> el.addEventListener('click', async ()=>{
     if(await deleteLog(el.dataset.del)) refreshLogsAndRender();
@@ -968,6 +1170,69 @@ function attachMainEvents(){
     const w = await createWatchlist(name);
     if(w){ newWatchlistNameDraft = ''; await refreshWatchlistsAndRender(); }
   });
+  const iwb = document.getElementById('importWatchlistBtn');
+  if(iwb) iwb.addEventListener('click', ()=> document.getElementById('importWatchlistFile').click());
+  document.querySelectorAll('[data-watchlist-id]').forEach(el=> el.addEventListener('click', ()=>{
+    state.viewingWatchlistId = el.dataset.watchlistId;
+    setTab('watchlist');
+  }));
+  const backWl = document.getElementById('backToWatchlist');
+  if(backWl) backWl.addEventListener('click', ()=>{ state.viewingWatchlistId = null; render(); });
+  document.querySelectorAll('[data-remove-watchlist]').forEach(el=> el.addEventListener('click', async ()=>{
+    const [wid, iid] = el.dataset.removeWatchlist.split('|');
+    if(await removeFromWatchlist(wid, iid)) await refreshWatchlistsAndRender();
+  }));
+  const uos = document.getElementById('unreadOnlySwitch');
+  if(uos) uos.addEventListener('click', ()=>{ state.watchlistShowUnreadOnly = !state.watchlistShowUnreadOnly; render(); });
+  let dragSourceId = null;
+  document.querySelectorAll('.wl-row[draggable]').forEach(row=>{
+    row.addEventListener('dragstart', ()=>{ dragSourceId = row.dataset.dragIssue; row.classList.add('dragging'); });
+    row.addEventListener('dragend', ()=> row.classList.remove('dragging'));
+    row.addEventListener('dragover', e=> e.preventDefault());
+    row.addEventListener('drop', async e=>{
+      e.preventDefault();
+      const targetId = row.dataset.dragIssue;
+      if(!dragSourceId || dragSourceId===targetId) return;
+      await reorderWatchlist(state.viewingWatchlistId, dragSourceId, targetId);
+      dragSourceId = null;
+    });
+  });
+}
+document.getElementById('importWatchlistFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  e.target.value = '';
+  if(file) await handleWatchlistImportFile(file);
+});
+
+/* ---------------- STAR PICKER (quarter-star, click-to-cycle) ---------------- */
+function starPickerHtml(pickerId){
+  return `<div class="star-picker" id="${pickerId}">${[1,2,3,4,5].map(p=>`<span class="star-cell" data-star="${p}"><span class="star-bg">★</span><span class="star-fill" data-fill></span></span>`).join('')}</div>`;
+}
+function renderStarPickerFill(pickerId, rating20){
+  document.querySelectorAll('#'+pickerId+' .star-cell').forEach(cell=>{
+    const p = parseInt(cell.dataset.star,10);
+    const raw = (rating20||0) - (p-1)*4;
+    const fillUnits = Math.max(0, Math.min(4, raw));
+    cell.querySelector('.star-fill').style.width = (fillUnits/4*100)+'%';
+  });
+}
+function attachStarPicker(pickerId, getValue, setValue){
+  document.querySelectorAll('#'+pickerId+' .star-cell').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      const p = parseInt(cell.dataset.star,10);
+      const cur = getValue();
+      const starMax = p*4, starMin = (p-1)*4;
+      let next;
+      if(cur!=null && cur > starMin && cur <= starMax){
+        next = cur - 1;
+        if(next <= starMin) next = starMax;
+      } else {
+        next = starMax;
+      }
+      setValue(next);
+      renderStarPickerFill(pickerId, next);
+    });
+  });
 }
 
 /* ---------------- SINGLE-ISSUE MODAL ---------------- */
@@ -987,8 +1252,8 @@ function renderModal(){
       <div class="sub">${escapeHtml(issue.arcName)} — by ${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' & '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
       ${modalCoverEl(issue)}
     </div>
-    <div class="field"><label>Rating (optional)</label>
-      <div class="star-picker" id="starPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
+    <div class="field"><label>Rating (optional — click a star, click again to step down by a quarter)</label>
+      ${starPickerHtml('starPicker')}
       <button type="button" class="del-btn" id="clearRating" style="margin-top:2px">Clear rating</button></div>
     <div class="field"><label>Review (optional)</label>
       <svg class="speech-bubble-svg" viewBox="0 0 320 130">
@@ -998,7 +1263,7 @@ function renderModal(){
         </foreignObject>
       </svg>
     </div>
-    <div class="field"><label>Watch list</label>
+    <div class="field"><label>Reading list</label>
       <select id="watchlistSelect">
         <option value="">Add to a list…</option>
         ${watchlists.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}${watchlistItems.some(it=>it.watchlist_id===w.id && it.issue_id===issue.id)?' ✓ already in':''}</option>`).join('')}
@@ -1009,10 +1274,12 @@ function renderModal(){
     ${lowerIssues.length ? `<div class="field checkbox-field"><label><input type="checkbox" id="alsoLogLower"> Also log all earlier issues of ${escapeHtml(issue.seriesTitle)} (#${Math.min(...lowerIssues.map(i=>i.number))}–#${Math.max(...lowerIssues.map(i=>i.number))}, ${lowerIssues.length} issue${lowerIssues.length!==1?'s':''})</label></div>` : ''}
     <button class="splash-btn" id="saveLog"><span>LOG IT!</span></button>
     ${past.length ? `<div class="past-logs"><h4>History (${past.length})</h4>
-      ${past.map(l=>`<div class="past-log-item"><span>${fmtDate(l.dateRead)} ${l.rating!=null?'· '+starString(l.rating):''}</span><button class="del-btn" data-del-modal="${l.id}">Delete</button></div>`).join('')}</div>` : ''}`;
+      ${past.map(l=>`<div class="past-log-item"><span>${fmtDate(l.dateRead)} ${l.rating!=null?'· '+starsHtml(l.rating):''}</span><button class="del-btn" data-del-modal="${l.id}">Delete</button></div>`).join('')}</div>` : ''}`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
-  document.querySelectorAll('#starPicker span').forEach(s=> s.addEventListener('click', ()=>{ modalRating = parseInt(s.dataset.v,10); updateStarPicker('starPicker', modalRating); }));
-  document.getElementById('clearRating').addEventListener('click', ()=>{ modalRating = null; updateStarPicker('starPicker', modalRating); });
+  attachStarPicker('starPicker', ()=>modalRating, v=>{ modalRating=v; });
+  document.getElementById('clearRating').addEventListener('click', ()=>{ modalRating = null; renderStarPickerFill('starPicker', 0); });
+  const coverElNode = document.getElementById('modalCoverEl');
+  if(coverElNode && issue.coverUrl) coverElNode.addEventListener('click', ()=> openLightbox(issue.coverUrl));
   document.getElementById('watchlistSelect').addEventListener('change', async (e)=>{
     const val = e.target.value;
     if(val === '__new__'){
@@ -1044,9 +1311,6 @@ function renderModal(){
     if(await deleteLog(el.dataset.delModal)){ await refreshLogsAndRender(); renderModal(); }
   }));
 }
-function updateStarPicker(pickerId, value){
-  document.querySelectorAll('#'+pickerId+' span').forEach(s=> s.classList.toggle('filled', value!=null && parseInt(s.dataset.v,10)<=value));
-}
 document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
 
 /* ---------------- BATCH (LOG A WHOLE GROUP) MODAL ---------------- */
@@ -1064,7 +1328,7 @@ function renderBatchModal(){
       <div class="sub">${batchIssueIds.length} issue${batchIssueIds.length!==1?'s':''} will be logged with the same date, rating and review.</div>
     </div>
     <div class="field"><label>Rating (optional, applied to all)</label>
-      <div class="star-picker" id="batchStarPicker">${[1,2,3,4,5].map(n=>`<span data-v="${n*2}">★</span>`).join('')}</div>
+      ${starPickerHtml('batchStarPicker')}
       <button type="button" class="del-btn" id="clearBatchRating" style="margin-top:2px">Clear rating</button></div>
     <div class="field"><label>Review (optional, applied to all)</label>
       <svg class="speech-bubble-svg" viewBox="0 0 320 130">
@@ -1077,8 +1341,8 @@ function renderBatchModal(){
     <button class="splash-btn" id="saveBatchLog"><span>LOG ALL ${batchIssueIds.length}!</span></button>
     <p class="hint">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
-  document.querySelectorAll('#batchStarPicker span').forEach(s=> s.addEventListener('click', ()=>{ batchRating = parseInt(s.dataset.v,10); updateStarPicker('batchStarPicker', batchRating); }));
-  document.getElementById('clearBatchRating').addEventListener('click', ()=>{ batchRating = null; updateStarPicker('batchStarPicker', batchRating); });
+  attachStarPicker('batchStarPicker', ()=>batchRating, v=>{ batchRating=v; });
+  document.getElementById('clearBatchRating').addEventListener('click', ()=>{ batchRating = null; renderStarPickerFill('batchStarPicker', 0); });
   document.getElementById('saveBatchLog').addEventListener('click', async (e)=>{
     const today = new Date().toISOString().slice(0,10);
     const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = '<span>Logging…</span>';
