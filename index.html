@@ -80,7 +80,11 @@
   .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
   .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.35), transparent 45%); z-index: 2; }
   .cover .read-badge { position: absolute; top: 6px; left: 6px; background: var(--gold); color: var(--ink); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; border: 2px solid var(--ink); z-index: 3; }
-  .cover .rated-badge { position: absolute; top: 6px; right: 6px; background: var(--ink); color: var(--gold); width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid var(--gold); z-index: 3; }
+  .cover .read-check { position: absolute; bottom: 7px; right: 9px; font-family: 'Bangers', sans-serif; font-size: 24px; color: #fff; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); z-index: 3; line-height: 1; }
+  .icon-btn { background: none; border: 2px solid transparent; border-radius: var(--radius); color: var(--ink-soft); padding: 4px; line-height: 0; }
+  .icon-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .icon-btn.danger:hover { color: var(--red); border-color: var(--red); }
+  .diary-actions { display: flex; justify-content: flex-end; gap: 2px; margin-top: 8px; }
   .card-meta { margin-top: 7px; font-size: 12px; line-height: 1.3; }
   .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; }
 
@@ -443,9 +447,17 @@ sb.auth.onAuthStateChange((_event, sess)=>{
 
 /* ---------------- DATA ACCESS (Supabase) ---------------- */
 async function fetchIssues(){
-  const { data, error } = await sb.from('issues').select('*').order('series_title').order('number');
-  if(error){ console.error(error); return []; }
-  return data.map(r=>({
+  let all = [];
+  let from = 0;
+  const PAGE = 1000;
+  while(true){
+    const { data, error } = await sb.from('issues').select('*').order('series_title').order('number').range(from, from + PAGE - 1);
+    if(error){ console.error(error); break; }
+    all = all.concat(data);
+    if(!data.length || data.length < PAGE) break;
+    from += PAGE;
+  }
+  return all.map(r=>({
     id:r.id, seriesId:r.series_id, seriesTitle:r.series_title, color:r.color,
     runName:r.run_name, arcName:r.arc_name, number:r.number, year:r.year,
     writer:r.writer, artist:r.artist, custom:r.custom, coverUrl:r.cover_url
@@ -558,6 +570,16 @@ async function addManyToWatchlist(watchlistId, issueIds){
   if(error){ alert("Error: " + error.message); return false; }
   return true;
 }
+async function deleteWatchlist(id){
+  const { error } = await sb.from('watchlists').delete().eq('id', id);
+  if(error){ alert("Error deleting list: " + error.message); return false; }
+  return true;
+}
+async function updateLogs(ids, fields){
+  const { error } = await sb.from('logs').update(fields).in('id', ids);
+  if(error){ alert("Error saving: " + error.message); return false; }
+  return true;
+}
 async function removeFromWatchlist(watchlistId, issueId){
   const { error } = await sb.from('watchlist_items').delete().eq('watchlist_id', watchlistId).eq('issue_id', issueId);
   if(error){ alert("Error: " + error.message); return false; }
@@ -630,7 +652,7 @@ function logsForIssue(id){ return logsCache.filter(l=>l.issueId===id).sort((a,b)
 function isRead(id){ return logsCache.some(l=>l.issueId===id); }
 // Rating is stored 0..20 (quarter-star units, 4 = 1 star).
 function starsHtml(rating20){
-  if(rating20==null) return '—';
+  if(!rating20) return '—'; // null or 0 = not rated
   let html = '';
   for(let p=1;p<=5;p++){
     const raw = rating20 - (p-1)*4;
@@ -650,9 +672,8 @@ function fmtYearRange(issues){
 function escapeHtml(s){ return (s+'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function coverEl(issue){
   const isReadIssue = isRead(issue.id);
-  const readBadge = isReadIssue ? '<div class="read-badge">✓</div>' : '';
-  const hasRating = logsForIssue(issue.id).some(l=>l.rating!=null);
-  const ratedBadge = hasRating ? '<div class="rated-badge">★</div>' : '';
+  const readBadge = isReadIssue ? '<div class="read-badge">✓</div><div class="read-check">✓</div>' : '';
+  const ratedBadge = '';
   const hasImg = !!issue.coverUrl;
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
   return `<div class="cover${hasImg?' has-img':''}" style="--accent:${issue.color}" data-issue="${issue.id}">
@@ -671,7 +692,7 @@ function diaryCoverEl(issue){
 }
 function issueCardHtml(issue){
   const ls = logsForIssue(issue.id);
-  const rated = ls.filter(l=>l.rating!=null);
+  const rated = ls.filter(l=>l.rating>0);
   const avg = rated.length ? Math.round(rated.reduce((a,l)=>a+l.rating,0)/rated.length) : null;
   return `<div class="issue-card">${coverEl(issue)}<div class="card-meta">
     <div class="t">#${issue.number}</div><div class="s">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</div>
@@ -679,7 +700,7 @@ function issueCardHtml(issue){
   </div></div>`;
 }
 function avgRatingForIssue(id){
-  const rated = logsForIssue(id).filter(l=>l.rating!=null);
+  const rated = logsForIssue(id).filter(l=>l.rating>0);
   if(!rated.length) return null;
   return rated.reduce((a,l)=>a+l.rating,0)/rated.length; // 0..20 scale
 }
@@ -753,8 +774,8 @@ function friendRecentCardHtml(log){
 function renderHome(){
   const distinctRead = new Set(logsCache.map(l=>l.issueId)).size;
   const total = issuesCache.length;
-  const rated = logsCache.filter(l=>l.rating!=null);
-  const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/4).toFixed(1) : '—';
+  const rated = logsCache.filter(l=>l.rating>0);
+  const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/4).toFixed(2) : '—';
   const recentIssues = issuesCache.slice().sort(()=>0.5-Math.random()).slice(0,10);
   const recentLogs = logsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,6);
   const continueList = computeContinueSeries();
@@ -767,7 +788,7 @@ function renderHome(){
     <div class="hero-stats">
       <div class="stat"><b>${logsCache.length}</b><span>Logged reads</span></div>
       <div class="stat"><b>${distinctRead}/${total}</b><span>Issues read</span></div>
-      <div class="stat"><b>${avg}</b><span>Average rating</span></div>
+      <div class="stat"><b>${avg}${avg==='—'?'':'<small style="font-size:0.55em">/5</small>'}</b><span>Average rating</span></div>
     </div></div>
   ${continueList.length ? `<div class="section-title"><h2>Continue the series</h2><span class="count">next unread issue</span></div>
   <div class="row-scroll">${continueList.map(i=>`<div style="width:140px;flex-shrink:0">${issueCardHtml(i)}</div>`).join('')}</div>` : ''}
@@ -851,15 +872,23 @@ function renderDiary(){
   return `<div class="section-title"><h2>Diary</h2><span class="count">${sorted.length} entr${sorted.length!==1?'ies':'y'}</span></div>
   ${groups.map(renderDiaryGroup).join('')}`;
 }
+const ICON_TRASH = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+const ICON_EDIT = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+function diaryActionsHtml(editIds, deleteAttr){
+  return `<div class="diary-actions">
+    <button class="icon-btn" data-edit-log="${editIds}" title="Edit" aria-label="Edit">${ICON_EDIT}</button>
+    <button class="icon-btn danger" ${deleteAttr} title="Delete" aria-label="Delete">${ICON_TRASH}</button>
+  </div>`;
+}
 function renderDiaryGroup(group){
   if(group.length === 1){
     const l = group[0]; const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry">${diaryCoverEl(iss)}
       <div class="diary-info"><div class="title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
       <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}</div>
-      ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}
-      <button class="del-btn" data-del="${l.id}">Delete this entry</button></div>
-      <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
+      ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
+      <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}
+        ${diaryActionsHtml(l.id, `data-del="${l.id}"`)}</div></div>`;
   }
   const first = group[0];
   const firstIssue = issueById(first.issueId);
@@ -869,9 +898,9 @@ function renderDiaryGroup(group){
   return `<div class="diary-entry">${firstIssue ? diaryCoverEl(firstIssue) : '<div class="diary-cover"></div>'}
     <div class="diary-info"><div class="title">${escapeHtml(label)}</div>
     <div class="sub">${group.length} issues logged at once</div>
-    ${first.review ? `<div class="review">${escapeHtml(first.review)}</div>` : ''}
-    <button class="del-btn" data-del-batch="${ids}">Delete this entry</button></div>
-    <div class="diary-side"><span class="stars">${starsHtml(first.rating)}</span>${fmtDate(first.dateRead)}</div></div>`;
+    ${first.review ? `<div class="review">${escapeHtml(first.review)}</div>` : ''}</div>
+    <div class="diary-side"><span class="stars">${starsHtml(first.rating)}</span>${fmtDate(first.dateRead)}
+      ${diaryActionsHtml(ids, `data-del-batch="${ids}"`)}</div></div>`;
 }
 
 /* ---------------- READING LIST (watchlist) ---------------- */
@@ -895,6 +924,7 @@ function renderWatchlist(){
     <div class="group-block">
       <div class="group-head">
         <h3 data-watchlist-id="${w.id}" style="cursor:pointer;text-decoration:underline">${escapeHtml(w.name)} <span class="n">${w.items.length} issue${w.items.length!==1?'s':''}</span></h3>
+        <button class="icon-btn danger" data-delete-watchlist="${w.id}" title="Delete this list" aria-label="Delete this list">${ICON_TRASH}</button>
       </div>
       <div class="grid">${w.items.slice(0,6).map(it=>{ const iss=issueById(it.issue_id); return iss?issueCardHtml(iss):''; }).join('') || '<p class="hint">Empty — add issues here from any issue page.</p>'}</div>
       ${w.items.length > 6 ? `<button class="log-group-btn" data-watchlist-id="${w.id}" style="margin-top:10px">View all ${w.items.length} →</button>` : ''}
@@ -912,7 +942,10 @@ function renderWatchlistDetail(watchlistId){
   if(!w) return `<div class="empty"><span class="display">List not found</span></div>`;
   const items = watchlistItems.filter(it=>it.watchlist_id===watchlistId).sort((a,b)=>(a.position||0)-(b.position||0));
   return `<div class="section-title"><h2>${escapeHtml(w.name)}</h2><span class="count">${items.length} issue${items.length!==1?'s':''}</span></div>
-  <button class="log-group-btn" id="backToWatchlist" style="margin-bottom:16px">← Back to Reading List</button>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="log-group-btn" id="backToWatchlist">← Back to Reading List</button>
+    <button class="log-group-btn" data-delete-watchlist="${watchlistId}">Delete this list</button>
+  </div>
   <p class="hint" style="margin-bottom:10px">Drag the ⠿ handle to reorder.</p>
   ${items.length ? items.map(it=>{
     const iss = issueById(it.issue_id); if(!iss) return '';
@@ -937,7 +970,7 @@ function renderFriendBlock(userId){
       const iss = issueById(l.issueId); if(!iss) return '';
       return `<div style="width:150px;flex-shrink:0">${coverEl(iss)}
         <div class="card-meta"><div class="t">#${iss.number}</div><div class="s">${escapeHtml(iss.seriesTitle)}</div>
-        ${l.rating!=null ? `<div class="stars">${starsHtml(l.rating)}</div>` : ''}
+        ${l.rating>0 ? `<div class="stars">${starsHtml(l.rating)}</div>` : ''}
         ${l.review ? `<div style="font-size:11px;margin-top:2px">${escapeHtml(l.review)}</div>` : ''}
         <div style="font-size:10.5px;color:var(--ink-soft);margin-top:2px">${fmtDate(l.dateRead)}</div></div></div>`;
     }).join('')}</div>
@@ -949,8 +982,8 @@ function renderFriendFullDiary(userId){
   const allSeries = Array.from(new Set(logs.map(l=>{ const i=issueById(l.issueId); return i?i.seriesTitle:null; }).filter(Boolean))).sort();
   if(state.friendFilterSeries) logs = logs.filter(l=>{ const i=issueById(l.issueId); return i && i.seriesTitle===state.friendFilterSeries; });
   if(state.friendFilterRating==='unrated') logs = logs.filter(l=>l.rating==null);
-  else if(state.friendFilterRating==='rated') logs = logs.filter(l=>l.rating!=null);
-  else if(state.friendFilterRating){ const min = parseInt(state.friendFilterRating,10); logs = logs.filter(l=> l.rating!=null && l.rating>=min); }
+  else if(state.friendFilterRating==='rated') logs = logs.filter(l=>l.rating>0);
+  else if(state.friendFilterRating){ const min = parseInt(state.friendFilterRating,10); logs = logs.filter(l=> l.rating>0 && l.rating>=min); }
   logs = logs.slice().sort((a,b)=> state.friendSortOrder==='asc' ? a.dateRead.localeCompare(b.dateRead) : b.dateRead.localeCompare(a.dateRead));
   return `<div class="section-title"><h2>@${escapeHtml(p?p.username:'user')}</h2><span class="count">${logs.length} logged read${logs.length!==1?'s':''}</span></div>
   <button class="log-group-btn" id="backToFriends" style="margin-bottom:18px">← Back to Friends</button>
@@ -1012,7 +1045,7 @@ function renderFriends(){
 
 function renderStats(){
   const distinctRead = new Set(logsCache.map(l=>l.issueId)).size;
-  const rated = logsCache.filter(l=>l.rating!=null);
+  const rated = logsCache.filter(l=>l.rating>0);
   const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/4).toFixed(2) : '—';
   const bySeries = {}; const byWriter = {};
   logsCache.forEach(l=>{ const iss=issueById(l.issueId); if(!iss) return;
@@ -1025,7 +1058,7 @@ function renderStats(){
   <div class="stats-grid">
     <div class="stat-card"><b>${logsCache.length}</b><span>Total reads</span></div>
     <div class="stat-card"><b>${distinctRead}</b><span>Distinct issues</span></div>
-    <div class="stat-card"><b>${avg}</b><span>Average rating / 5</span></div>
+    <div class="stat-card"><b>${avg}${avg==='—'?'':'<small style="font-size:0.55em">/5</small>'}</b><span>Average rating</span></div>
     <div class="stat-card"><b>${Object.keys(bySeries).length}</b><span>Series explored</span></div>
   </div>
   ${topSeries.length ? `<div class="section-title"><h2 style="font-size:20px">Most-read series</h2></div><div style="margin-bottom:26px">${bars(topSeries,maxS)}</div>` : ''}
@@ -1129,9 +1162,18 @@ function attachMainEvents(){
     if(ok) await refreshWatchlistsAndRender();
   }));
   document.querySelectorAll('[data-del]').forEach(el=> el.addEventListener('click', async ()=>{
+    if(!confirm('Delete this entry?')) return;
     if(await deleteLog(el.dataset.del)) refreshLogsAndRender();
   }));
+  document.querySelectorAll('[data-edit-log]').forEach(el=> el.addEventListener('click', ()=> openEditModal(el.dataset.editLog)));
+  document.querySelectorAll('[data-delete-watchlist]').forEach(el=> el.addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    const w = watchlists.find(x=>x.id===el.dataset.deleteWatchlist);
+    if(!w || !confirm(`Delete the list "${w.name}"? The issues themselves stay in the catalog.`)) return;
+    if(await deleteWatchlist(w.id)){ if(state.viewingWatchlistId===w.id) state.viewingWatchlistId = null; await refreshWatchlistsAndRender(); }
+  }));
   document.querySelectorAll('[data-del-batch]').forEach(el=> el.addEventListener('click', async ()=>{
+    if(!confirm('Delete all the entries of this group?')) return;
     const ids = el.dataset.delBatch.split(',');
     if(await deleteLogsBatch(ids)) refreshLogsAndRender();
   }));
@@ -1206,7 +1248,7 @@ document.getElementById('importWatchlistFile').addEventListener('change', async 
 
 /* ---------------- STAR PICKER (quarter-star, click-to-cycle) ---------------- */
 function starPickerHtml(pickerId){
-  return `<div class="star-picker" id="${pickerId}">${[1,2,3,4,5].map(p=>`<span class="star-cell" data-star="${p}"><span class="star-bg">★</span><span class="star-fill" data-fill></span></span>`).join('')}</div>`;
+  return `<div class="star-picker" id="${pickerId}">${[1,2,3,4,5].map(p=>`<span class="star-cell" data-star="${p}"><span class="star-bg">★</span><span class="star-fill" data-fill style="width:0%">★</span></span>`).join('')}</div>`;
 }
 function renderStarPickerFill(pickerId, rating20){
   document.querySelectorAll('#'+pickerId+' .star-cell').forEach(cell=>{
@@ -1217,19 +1259,20 @@ function renderStarPickerFill(pickerId, rating20){
   });
 }
 function attachStarPicker(pickerId, getValue, setValue){
+  renderStarPickerFill(pickerId, getValue() || 0);
   document.querySelectorAll('#'+pickerId+' .star-cell').forEach(cell=>{
     cell.addEventListener('click', ()=>{
       const p = parseInt(cell.dataset.star,10);
-      const cur = getValue();
+      const cur = getValue() || 0;
       const starMax = p*4, starMin = (p-1)*4;
       let next;
-      if(cur!=null && cur > starMin && cur <= starMax){
-        next = cur - 1;
-        if(next <= starMin) next = starMax;
+      if(cur > starMin && cur <= starMax){
+        next = cur - 1;                       // each further click removes a quarter
+        if(next <= starMin) next = (p===1) ? 0 : starMax; // first star: down to zero; others: wrap to full
       } else {
-        next = starMax;
+        next = starMax;                       // first click on a star = full star
       }
-      setValue(next);
+      setValue(next === 0 ? null : next);     // 0 = not rated
       renderStarPickerFill(pickerId, next);
     });
   });
@@ -1252,9 +1295,8 @@ function renderModal(){
       <div class="sub">${escapeHtml(issue.arcName)} — by ${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' & '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
       ${modalCoverEl(issue)}
     </div>
-    <div class="field"><label>Rating (optional — click a star, click again to step down by a quarter)</label>
-      ${starPickerHtml('starPicker')}
-      <button type="button" class="del-btn" id="clearRating" style="margin-top:2px">Clear rating</button></div>
+    <div class="field"><label>Rating (optional) — click a star, keep clicking to remove a quarter each time, down to zero</label>
+      ${starPickerHtml('starPicker')}</div>
     <div class="field"><label>Review (optional)</label>
       <svg class="speech-bubble-svg" viewBox="0 0 320 130">
         <path d="M14,0 H306 A14,14 0 0 1 320,14 V86 A14,14 0 0 1 306,100 H42 L26,124 L34,100 H14 A14,14 0 0 1 0,86 V14 A14,14 0 0 1 14,0 Z" fill="#fff" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
@@ -1274,10 +1316,9 @@ function renderModal(){
     ${lowerIssues.length ? `<div class="field checkbox-field"><label><input type="checkbox" id="alsoLogLower"> Also log all earlier issues of ${escapeHtml(issue.seriesTitle)} (#${Math.min(...lowerIssues.map(i=>i.number))}–#${Math.max(...lowerIssues.map(i=>i.number))}, ${lowerIssues.length} issue${lowerIssues.length!==1?'s':''})</label></div>` : ''}
     <button class="splash-btn" id="saveLog"><span>LOG IT!</span></button>
     ${past.length ? `<div class="past-logs"><h4>History (${past.length})</h4>
-      ${past.map(l=>`<div class="past-log-item"><span>${fmtDate(l.dateRead)} ${l.rating!=null?'· '+starsHtml(l.rating):''}</span><button class="del-btn" data-del-modal="${l.id}">Delete</button></div>`).join('')}</div>` : ''}`;
+      ${past.map(l=>`<div class="past-log-item"><span>${fmtDate(l.dateRead)} ${l.rating>0?'· '+starsHtml(l.rating):''}</span><button class="del-btn" data-del-modal="${l.id}">Delete</button></div>`).join('')}</div>` : ''}`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
   attachStarPicker('starPicker', ()=>modalRating, v=>{ modalRating=v; });
-  document.getElementById('clearRating').addEventListener('click', ()=>{ modalRating = null; renderStarPickerFill('starPicker', 0); });
   const coverElNode = document.getElementById('modalCoverEl');
   if(coverElNode && issue.coverUrl) coverElNode.addEventListener('click', ()=> openLightbox(issue.coverUrl));
   document.getElementById('watchlistSelect').addEventListener('change', async (e)=>{
@@ -1313,6 +1354,50 @@ function renderModal(){
 }
 document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
 
+/* ---------------- EDIT AN EXISTING LOG ---------------- */
+let editLogIds = null, editRating = null;
+function openEditModal(idsCsv){
+  editLogIds = idsCsv.split(',');
+  const first = logsCache.find(l=>l.id===editLogIds[0]);
+  if(!first) return;
+  editRating = first.rating>0 ? first.rating : null;
+  document.getElementById('overlay').classList.add('open');
+  renderEditModal(first);
+}
+function renderEditModal(first){
+  const iss = issueById(first.issueId);
+  const many = editLogIds.length > 1;
+  document.getElementById('modal').innerHTML = `
+    <button class="close-x" id="closeModal">&times;</button>
+    <div class="modal-head splash">
+      <h3>${many ? editLogIds.length+' issues logged together' : iss ? escapeHtml(iss.seriesTitle)+' #'+iss.number : 'Edit log'}</h3>
+      <div class="sub">Edit your log from ${fmtDate(first.dateRead)}${many ? ' — changes apply to all of them' : ''}</div>
+      ${!many && iss ? modalCoverEl(iss) : ''}
+    </div>
+    <div class="field"><label>Rating (optional) — click a star, keep clicking to remove a quarter each time, down to zero</label>
+      ${starPickerHtml('editStarPicker')}</div>
+    <div class="field"><label>Review (optional)</label>
+      <svg class="speech-bubble-svg" viewBox="0 0 320 130">
+        <path d="M14,0 H306 A14,14 0 0 1 320,14 V86 A14,14 0 0 1 306,100 H42 L26,124 L34,100 H14 A14,14 0 0 1 0,86 V14 A14,14 0 0 1 14,0 Z" fill="#fff" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
+        <foreignObject x="14" y="12" width="292" height="76">
+          <textarea xmlns="http://www.w3.org/1999/xhtml" id="editReview" placeholder="Your thoughts…"></textarea>
+        </foreignObject>
+      </svg>
+    </div>
+    <button class="splash-btn" id="saveEdit"><span>SAVE CHANGES</span></button>`;
+  document.getElementById('editReview').value = first.review || '';
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  attachStarPicker('editStarPicker', ()=>editRating, v=>{ editRating=v; });
+  const cv = document.getElementById('modalCoverEl');
+  if(cv && iss && iss.coverUrl) cv.addEventListener('click', ()=> openLightbox(iss.coverUrl));
+  document.getElementById('saveEdit').addEventListener('click', async (e)=>{
+    const btn = e.currentTarget; btn.disabled = true;
+    const review = document.getElementById('editReview').value.trim();
+    const ok = await updateLogs(editLogIds, { rating: editRating, review: review || null });
+    if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; }
+  });
+}
+
 /* ---------------- BATCH (LOG A WHOLE GROUP) MODAL ---------------- */
 let batchIssueIds = null, batchRating = null, batchLabel = '';
 function openBatchModal(label, issueIds){
@@ -1328,8 +1413,7 @@ function renderBatchModal(){
       <div class="sub">${batchIssueIds.length} issue${batchIssueIds.length!==1?'s':''} will be logged with the same date, rating and review.</div>
     </div>
     <div class="field"><label>Rating (optional, applied to all)</label>
-      ${starPickerHtml('batchStarPicker')}
-      <button type="button" class="del-btn" id="clearBatchRating" style="margin-top:2px">Clear rating</button></div>
+      ${starPickerHtml('batchStarPicker')}</div>
     <div class="field"><label>Review (optional, applied to all)</label>
       <svg class="speech-bubble-svg" viewBox="0 0 320 130">
         <path d="M14,0 H306 A14,14 0 0 1 320,14 V86 A14,14 0 0 1 306,100 H42 L26,124 L34,100 H14 A14,14 0 0 1 0,86 V14 A14,14 0 0 1 14,0 Z" fill="#fff" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
@@ -1342,7 +1426,6 @@ function renderBatchModal(){
     <p class="hint">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
   attachStarPicker('batchStarPicker', ()=>batchRating, v=>{ batchRating=v; });
-  document.getElementById('clearBatchRating').addEventListener('click', ()=>{ batchRating = null; renderStarPickerFill('batchStarPicker', 0); });
   document.getElementById('saveBatchLog').addEventListener('click', async (e)=>{
     const today = new Date().toISOString().slice(0,10);
     const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = '<span>Logging…</span>';
