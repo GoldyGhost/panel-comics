@@ -88,9 +88,10 @@
   .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; }
 
   /* Fractional star rating (read-only display, small) */
-  .star-cell { position: relative; display: inline-block; width: 1em; }
-  .star-bg { color: var(--line); }
-  .star-fill { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--gold); }
+  .star-cell { position: relative; display: inline-block; width: 1em; height: 1em; line-height: 0; }
+  .star-svg { width: 1em; height: 1em; display: block; }
+  .star-svg .star-bg-path { fill: var(--line); }
+  .star-svg .star-fg-path { fill: var(--gold); }
   /* Interactive picker: bigger, clickable */
   .star-picker { display: flex; justify-content: center; gap: 8px; font-size: 64px; margin: 10px 0 6px; }
   .star-picker .star-cell { cursor: pointer; width: 1em; }
@@ -652,6 +653,13 @@ function issueById(id){ return issuesCache.find(i=>i.id===id); }
 function logsForIssue(id){ return logsCache.filter(l=>l.issueId===id).sort((a,b)=> b.dateRead.localeCompare(a.dateRead)); }
 function isRead(id){ return logsCache.some(l=>l.issueId===id); }
 // Rating is stored 0..10 (half-star units, 2 = 1 star).
+const STAR_PATH = "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z";
+let __starUid = 0;
+function starSvg(pct, uid){
+  const w = (pct/100*24).toFixed(2);
+  return `<span class="star-cell"><svg class="star-svg" viewBox="0 0 24 24"><defs><clipPath id="sc${uid}"><rect x="0" y="0" width="${w}" height="24"/></clipPath></defs>
+    <path class="star-bg-path" d="${STAR_PATH}"/><path class="star-fg-path" d="${STAR_PATH}" clip-path="url(#sc${uid})"/></svg></span>`;
+}
 function starsHtml(rating10){
   if(!rating10) return '—'; // null or 0 = not rated
   let html = '';
@@ -659,7 +667,7 @@ function starsHtml(rating10){
     const raw = rating10 - (p-1)*2;
     const fillUnits = Math.max(0, Math.min(2, raw));
     const pct = (fillUnits/2*100);
-    html += `<span class="star-cell"><span class="star-bg">★</span><span class="star-fill" style="width:${pct}%">★</span></span>`;
+    html += starSvg(pct, 's'+(__starUid++));
   }
   return html;
 }
@@ -1268,14 +1276,19 @@ document.getElementById('importWatchlistFile').addEventListener('change', async 
 
 /* ---------------- STAR PICKER (half-star, click-to-cycle) ---------------- */
 function starPickerHtml(pickerId){
-  return `<div class="star-picker" id="${pickerId}">${[1,2,3,4,5].map(p=>`<span class="star-cell" data-star="${p}"><span class="star-bg">★</span><span class="star-fill" data-fill style="width:0%">★</span></span>`).join('')}</div>`;
+  return `<div class="star-picker" id="${pickerId}">${[1,2,3,4,5].map(p=>
+    `<span class="star-cell" data-star="${p}"><svg class="star-svg" viewBox="0 0 24 24"><defs><clipPath id="${pickerId}-c${p}"><rect x="0" y="0" width="0" height="24"/></clipPath></defs>
+      <path class="star-bg-path" d="${STAR_PATH}"/><path class="star-fg-path" d="${STAR_PATH}" clip-path="url(#${pickerId}-c${p})"/></svg></span>`
+  ).join('')}</div>`;
 }
 function renderStarPickerFill(pickerId, rating10){
   document.querySelectorAll('#'+pickerId+' .star-cell').forEach(cell=>{
     const p = parseInt(cell.dataset.star,10);
     const raw = (rating10||0) - (p-1)*2;
     const fillUnits = Math.max(0, Math.min(2, raw));
-    cell.querySelector('.star-fill').style.width = (fillUnits/2*100)+'%';
+    const w = (fillUnits/2*24).toFixed(2);
+    const rect = document.getElementById(pickerId+'-c'+p);
+    if(rect) rect.querySelector('rect').setAttribute('width', w);
   });
 }
 function attachStarPicker(pickerId, getValue, setValue){
@@ -1315,7 +1328,7 @@ function renderModal(){
       <div class="sub">${escapeHtml(issue.arcName)} — by ${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' & '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
       ${modalCoverEl(issue)}
     </div>
-    <div class="field"><label>Rating (optional) — click a star for a full star, click again for a half star</label>
+    <div class="field"><label>Rating (optional)</label>
       ${starPickerHtml('starPicker')}</div>
     <div class="field"><label>Review (optional)</label>
       <svg class="speech-bubble-svg" viewBox="0 0 320 130">
@@ -1432,7 +1445,7 @@ function renderBatchModal(){
       <h3>${escapeHtml(batchLabel)}</h3>
       <div class="sub">${batchIssueIds.length} issue${batchIssueIds.length!==1?'s':''} will be logged with the same date, rating and review.</div>
     </div>
-    <div class="field"><label>Rating (optional, applied to all)</label>
+    <div class="field"><label>Rating (optional)</label>
       ${starPickerHtml('batchStarPicker')}</div>
     <div class="field"><label>Review (optional, applied to all)</label>
       <svg class="speech-bubble-svg" viewBox="0 0 320 130">
