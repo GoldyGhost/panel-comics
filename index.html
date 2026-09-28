@@ -92,7 +92,7 @@
   .star-bg { color: var(--line); }
   .star-fill { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: var(--gold); }
   /* Interactive picker: bigger, clickable */
-  .star-picker { display: flex; gap: 5px; font-size: 54px; margin: 6px 0 4px; }
+  .star-picker { display: flex; justify-content: center; gap: 8px; font-size: 64px; margin: 10px 0 6px; }
   .star-picker .star-cell { cursor: pointer; width: 1em; }
 
   .browse-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; border: 2px solid var(--ink); background: var(--paper-2); border-radius: var(--radius); padding: 10px 12px; }
@@ -224,7 +224,7 @@
     .bar-row { grid-template-columns: 92px 1fr 26px; font-size: 11.5px; }
     .modal { padding: 16px; }
     .splash-btn { font-size: 18px; padding: 18px 10px; }
-    .star-picker { font-size: 40px; }
+    .star-picker { font-size: 46px; }
   }
 </style>
 </head>
@@ -651,14 +651,14 @@ async function refreshWatchlistsAndRender(){
 function issueById(id){ return issuesCache.find(i=>i.id===id); }
 function logsForIssue(id){ return logsCache.filter(l=>l.issueId===id).sort((a,b)=> b.dateRead.localeCompare(a.dateRead)); }
 function isRead(id){ return logsCache.some(l=>l.issueId===id); }
-// Rating is stored 0..20 (quarter-star units, 4 = 1 star).
-function starsHtml(rating20){
-  if(!rating20) return '—'; // null or 0 = not rated
+// Rating is stored 0..10 (half-star units, 2 = 1 star).
+function starsHtml(rating10){
+  if(!rating10) return '—'; // null or 0 = not rated
   let html = '';
   for(let p=1;p<=5;p++){
-    const raw = rating20 - (p-1)*4;
-    const fillUnits = Math.max(0, Math.min(4, raw));
-    const pct = (fillUnits/4*100);
+    const raw = rating10 - (p-1)*2;
+    const fillUnits = Math.max(0, Math.min(2, raw));
+    const pct = (fillUnits/2*100);
     html += `<span class="star-cell"><span class="star-bg">★</span><span class="star-fill" style="width:${pct}%">★</span></span>`;
   }
   return html;
@@ -703,7 +703,7 @@ function issueCardHtml(issue){
 function avgRatingForIssue(id){
   const rated = logsForIssue(id).filter(l=>l.rating>0);
   if(!rated.length) return null;
-  return rated.reduce((a,l)=>a+l.rating,0)/rated.length; // 0..20 scale
+  return rated.reduce((a,l)=>a+l.rating,0)/rated.length; // 0..10 scale
 }
 function filteredIssues(){
   const raw = state.search.trim();
@@ -1058,7 +1058,7 @@ function renderFriends(){
 function renderStats(){
   const distinctRead = new Set(logsCache.map(l=>l.issueId)).size;
   const rated = logsCache.filter(l=>l.rating>0);
-  const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/4).toFixed(2) : '—';
+  const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/2).toFixed(2) : '—';
   const bySeries = {}; const byWriter = {};
   logsCache.forEach(l=>{ const iss=issueById(l.issueId); if(!iss) return;
     bySeries[iss.seriesTitle]=(bySeries[iss.seriesTitle]||0)+1; byWriter[iss.writer]=(byWriter[iss.writer]||0)+1; });
@@ -1266,16 +1266,16 @@ document.getElementById('importWatchlistFile').addEventListener('change', async 
   if(file) await handleWatchlistImportFile(file);
 });
 
-/* ---------------- STAR PICKER (quarter-star, click-to-cycle) ---------------- */
+/* ---------------- STAR PICKER (half-star, click-to-cycle) ---------------- */
 function starPickerHtml(pickerId){
   return `<div class="star-picker" id="${pickerId}">${[1,2,3,4,5].map(p=>`<span class="star-cell" data-star="${p}"><span class="star-bg">★</span><span class="star-fill" data-fill style="width:0%">★</span></span>`).join('')}</div>`;
 }
-function renderStarPickerFill(pickerId, rating20){
+function renderStarPickerFill(pickerId, rating10){
   document.querySelectorAll('#'+pickerId+' .star-cell').forEach(cell=>{
     const p = parseInt(cell.dataset.star,10);
-    const raw = (rating20||0) - (p-1)*4;
-    const fillUnits = Math.max(0, Math.min(4, raw));
-    cell.querySelector('.star-fill').style.width = (fillUnits/4*100)+'%';
+    const raw = (rating10||0) - (p-1)*2;
+    const fillUnits = Math.max(0, Math.min(2, raw));
+    cell.querySelector('.star-fill').style.width = (fillUnits/2*100)+'%';
   });
 }
 function attachStarPicker(pickerId, getValue, setValue){
@@ -1284,7 +1284,7 @@ function attachStarPicker(pickerId, getValue, setValue){
     cell.addEventListener('click', ()=>{
       const p = parseInt(cell.dataset.star,10);
       const cur = getValue() || 0;
-      const starMax = p*4, starMin = (p-1)*4;
+      const starMax = p*2, starMin = (p-1)*2;
       let next;
       if(cur > starMin && cur <= starMax){
         next = cur - 1;                       // each further click removes a quarter
@@ -1315,7 +1315,7 @@ function renderModal(){
       <div class="sub">${escapeHtml(issue.arcName)} — by ${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' & '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
       ${modalCoverEl(issue)}
     </div>
-    <div class="field"><label>Rating (optional) — click a star, keep clicking to remove a quarter each time, down to zero</label>
+    <div class="field"><label>Rating (optional) — click a star for a full star, click again for a half star</label>
       ${starPickerHtml('starPicker')}</div>
     <div class="field"><label>Review (optional)</label>
       <svg class="speech-bubble-svg" viewBox="0 0 320 130">
