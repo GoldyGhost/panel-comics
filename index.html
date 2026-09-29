@@ -148,7 +148,8 @@
   .wl-row.is-read-row { opacity: 0.45; filter: grayscale(0.6); }
 
   /* Quick-add "..." menu on issue cards */
-  .issue-card { position: relative; display: flex; flex-direction: column; height: 100%; }
+  .issue-card { position: relative; display: flex; flex-direction: column; }
+  .grid .issue-card { height: 100%; }
   .card-meta { position: relative; display: flex; flex-direction: column; flex: 1; }
   .quick-add-btn { align-self: flex-end; margin-top: auto; padding-top: 4px; background: none; border: none; color: var(--ink-soft); font-size: 16px; font-weight: 800; padding-left: 6px; padding-right: 6px; line-height: 1; letter-spacing: 1px; }
   .quick-add-btn:hover { color: var(--ink); }
