@@ -138,8 +138,23 @@
   .wl-row .wl-cover { width: 44px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; }
   .wl-row .wl-title { font-size: 13px; font-weight: 700; }
   .wl-row .wl-sub { font-size: 11px; color: var(--ink-soft); }
-  .drag-handle { cursor: grab; font-size: 18px; color: var(--ink-soft); padding: 4px 8px; }
+  .drag-handle { cursor: grab; font-size: 18px; color: var(--ink-soft); padding: 10px 10px; touch-action: none; -webkit-user-select: none; user-select: none; }
   .wl-row.dragging { opacity: 0.4; }
+  .wl-row.drag-over { box-shadow: inset 0 3px 0 var(--red), inset 0 -3px 0 var(--red); }
+  .wl-row.is-read-row { opacity: 0.45; filter: grayscale(0.6); }
+
+  /* Quick-add "..." menu on issue cards */
+  .issue-card { position: relative; }
+  .quick-add-btn { position: absolute; bottom: 2px; right: 0; background: none; border: none; color: var(--ink-soft); font-size: 16px; font-weight: 800; padding: 2px 6px; line-height: 1; letter-spacing: 1px; }
+  .quick-add-btn:hover { color: var(--ink); }
+  .card-meta { position: relative; padding-right: 20px; }
+  .quick-add-menu { display: none; position: absolute; bottom: 100%; right: 0; z-index: 15; background: var(--paper); border: 2px solid var(--ink); border-radius: var(--radius); box-shadow: var(--card-shadow); min-width: 150px; padding: 4px; }
+  .quick-add-menu.open { display: block; }
+  .quick-add-menu button { display: block; width: 100%; text-align: left; background: none; border: none; padding: 7px 8px; font-size: 12px; color: var(--ink); border-radius: 2px; }
+  .quick-add-menu button:hover { background: var(--paper-2); }
+
+  /* CSV import info modal */
+  .csv-example { background: var(--paper-2); border: 2px solid var(--ink); border-radius: var(--radius); padding: 10px 12px; font-family: 'Courier New', monospace; font-size: 12px; margin: 10px 0; white-space: pre; }
 
   form.auth-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 640px; }
   form.auth-form .full { grid-column: 1 / -1; }
@@ -555,6 +570,21 @@ async function createWatchlist(name){
   if(error){ alert("Error: " + error.message); return null; }
   return data;
 }
+const READ_LATER_NAME = 'À lire plus tard';
+async function ensureDefaultReadingList(){
+  const { data, error } = await sb.from('watchlists').select('id').eq('user_id', session.user.id).eq('is_default', true).maybeSingle();
+  if(error){ console.error(error); return; }
+  if(!data){
+    const { error: insErr } = await sb.from('watchlists').insert({ user_id: session.user.id, name: READ_LATER_NAME, is_default: true });
+    if(insErr) console.error(insErr);
+  }
+}
+async function removeFromReadLater(issueIds){
+  const def = watchlists.find(w=>w.is_default);
+  if(!def || !issueIds.length) return;
+  const { error } = await sb.from('watchlist_items').delete().eq('watchlist_id', def.id).in('issue_id', issueIds);
+  if(error) console.error(error);
+}
 async function addToWatchlist(watchlistId, issueId){
   const existingForList = watchlistItems.filter(it=>it.watchlist_id===watchlistId);
   const pos = existingForList.length ? Math.max(...existingForList.map(it=>it.position||0)) + 1 : 1;
@@ -611,6 +641,7 @@ async function finishBoot(){
     document.getElementById('userChip').insertAdjacentHTML('afterbegin', `<button class="logout-btn" id="logoutBtn">Sign out</button>`);
     document.getElementById('logoutBtn').addEventListener('click', logout);
   }
+  await ensureDefaultReadingList();
   const [issues, allLogs, followingList, followerList, wls, wlItems] = await Promise.all([
     fetchIssues(), fetchLogs(), fetchFollowing(), fetchFollowers(), fetchWatchlists(), fetchWatchlistItems()
   ]);
@@ -699,6 +730,12 @@ function diaryCoverEl(issue){
   const img = hasImg ? `<img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
   return `<div class="diary-cover${hasImg?' has-img':''}" style="--accent:${issue.color}" data-lightbox-cover="${issue.coverUrl||''}">${img}</div>`;
 }
+function quickAddMenuHtml(issueId){
+  return `<div class="quick-add-menu" id="qam-${issueId}">
+    ${watchlists.map(w=>`<button data-quick-add-to="${w.id}|${issueId}">${w.is_default?'★ ':''}${escapeHtml(w.name)}</button>`).join('')}
+    <button data-quick-add-new="${issueId}">+ New list…</button>
+  </div>`;
+}
 function issueCardHtml(issue){
   const ls = logsForIssue(issue.id);
   const rated = ls.filter(l=>l.rating>0);
@@ -706,6 +743,8 @@ function issueCardHtml(issue){
   return `<div class="issue-card">${coverEl(issue)}<div class="card-meta">
     <div class="t">#${issue.number}</div><div class="s">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</div>
     ${avg!=null ? `<div class="stars">${starsHtml(avg)}</div>` : ''}
+    <button class="quick-add-btn" data-quick-add-toggle="${issue.id}" title="Add to a list" aria-label="Add to a list">⋯</button>
+    ${quickAddMenuHtml(issue.id)}
   </div></div>`;
 }
 function avgRatingForIssue(id){
@@ -748,6 +787,28 @@ function computeContinueSeries(){
     }
   });
   return results.slice(0,10);
+}
+function computeContinueReadingLists(){
+  const results = [];
+  watchlists.forEach(w=>{
+    const items = watchlistItems.filter(it=>it.watchlist_id===w.id).sort((a,b)=>(a.position||0)-(b.position||0));
+    const next = items.find(it=>!isRead(it.issue_id));
+    if(next){ const iss = issueById(next.issue_id); if(iss) results.push({ issue: iss, listName: w.name }); }
+  });
+  return results;
+}
+function computeDiscover(){
+  const loggedIds = new Set(logsCache.map(l=>l.issueId));
+  const bySeries = {};
+  issuesCache.forEach(i=>{ (bySeries[i.seriesId] = bySeries[i.seriesId]||[]).push(i); });
+  const candidates = [];
+  Object.values(bySeries).forEach(list=>{
+    list.sort((a,b)=>a.number-b.number);
+    const firstUnread = list.find(i=>!loggedIds.has(i.id));
+    if(firstUnread) candidates.push(firstUnread);
+  });
+  for(let i=candidates.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [candidates[i],candidates[j]]=[candidates[j],candidates[i]]; }
+  return candidates.slice(0,7);
 }
 
 /* ---------------- TABS ---------------- */
@@ -793,11 +854,13 @@ function friendRecentCardHtml(log){
 }
 
 function renderHome(){
-  const distinctRead = new Set(logsCache.map(l=>l.issueId)).size;
-  const total = issuesCache.length;
-  const recentIssues = issuesCache.slice().sort(()=>0.5-Math.random()).slice(0,10);
+  const wlIssueIds = new Set(watchlistItems.map(it=>it.issue_id));
+  const wlTotal = wlIssueIds.size;
+  const wlRead = [...wlIssueIds].filter(id=>isRead(id)).length;
   const recentLogs = logsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,6);
   const continueList = computeContinueSeries();
+  const continueLists = computeContinueReadingLists();
+  const discover = computeDiscover();
   const friendsRecent = computeFriendsRecent();
   return `
   <div class="hero"><div>
@@ -806,16 +869,18 @@ function renderHome(){
     </div>
     <div class="hero-stats">
       <div class="stat"><b>${logsCache.length}</b><span>Logged reads</span></div>
-      <div class="stat"><b>${distinctRead}/${total}</b><span>Issues read</span></div>
+      <div class="stat"><b>${wlTotal ? wlRead+'/'+wlTotal : '—'}</b><span>Reading list read</span></div>
     </div></div>
   ${continueList.length ? `<div class="section-title"><h2>Continue the series</h2><span class="count">next unread issue</span></div>
   <div class="row-scroll">${continueList.map(i=>`<div style="width:140px;flex-shrink:0">${issueCardHtml(i)}</div>`).join('')}</div>` : ''}
+  ${continueLists.length ? `<div class="section-title"><h2>Continue the reading list</h2><span class="count">next up in each list</span></div>
+  <div class="row-scroll">${continueLists.map(({issue,listName})=>`<div style="width:140px;flex-shrink:0">${issueCardHtml(issue)}<div style="font-size:11px;color:var(--ink-soft);margin-top:4px">${escapeHtml(listName)}</div></div>`).join('')}</div>` : ''}
   ${friendsRecent.length ? `<div class="section-title"><h2>Friends' recent reads</h2></div>
   <div class="row-scroll">${friendsRecent.map(friendRecentCardHtml).join('')}</div>` : ''}
   ${recentLogs.length ? `<div class="section-title"><h2>Recent reads</h2></div>
   <div class="row-scroll">${recentLogs.map(l=>{ const iss=issueById(l.issueId); return iss?`<div style="width:140px;flex-shrink:0">${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
-  <div class="section-title"><h2>Discover</h2><span class="count">random sample</span></div>
-  <div class="grid">${recentIssues.map(issueCardHtml).join('')}</div>`;
+  <div class="section-title"><h2>Discover</h2><span class="count">first unread issue of a random series</span></div>
+  <div class="grid">${discover.map(issueCardHtml).join('')}</div>`;
 }
 
 const BROWSE_PAGE_SIZE = 15; // groups per page, keeps each render fast even with a huge catalogue
@@ -943,7 +1008,7 @@ function renderWatchlist(){
     <div class="group-block">
       <div class="group-head">
         <h3 data-watchlist-id="${w.id}" style="cursor:pointer;text-decoration:underline">${escapeHtml(w.name)} <span class="n">${w.items.length} issue${w.items.length!==1?'s':''} · ${w.items.filter(it=>isRead(it.issue_id)).length}/${w.items.length} read</span></h3>
-        <button class="icon-btn danger" data-delete-watchlist="${w.id}" title="Delete this list" aria-label="Delete this list">${ICON_TRASH}</button>
+        ${w.is_default ? '' : `<button class="icon-btn danger" data-delete-watchlist="${w.id}" title="Delete this list" aria-label="Delete this list">${ICON_TRASH}</button>`}
       </div>
       <div class="grid">${w.items.slice(0,6).map(it=>{ const iss=issueById(it.issue_id); return iss?issueCardHtml(iss):''; }).join('') || '<p class="hint">Empty — add issues here from any issue page.</p>'}</div>
       ${w.items.length > 6 ? `<button class="log-group-btn" data-watchlist-id="${w.id}" style="margin-top:10px">View all ${w.items.length} →</button>` : ''}
@@ -964,14 +1029,14 @@ function renderWatchlistDetail(watchlistId){
   return `<div class="section-title"><h2>${escapeHtml(w.name)}</h2><span class="count">${items.length} issue${items.length!==1?'s':''} · ${readCount}/${items.length} read</span></div>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
     <button class="log-group-btn" id="backToWatchlist">← Back to Reading List</button>
-    <button class="log-group-btn" data-delete-watchlist="${watchlistId}">Delete this list</button>
+    ${w.is_default ? '' : `<button class="log-group-btn" data-delete-watchlist="${watchlistId}">Delete this list</button>`}
   </div>
   <p class="hint" style="margin-bottom:10px">Drag the ⠿ handle to reorder.</p>
   ${items.length ? items.map(it=>{
     const iss = issueById(it.issue_id); if(!iss) return '';
     const hasImg = !!iss.coverUrl;
     const img = hasImg ? `<img class="cover-img" src="${iss.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
-    return `<div class="wl-row" draggable="true" data-drag-issue="${it.issue_id}">
+    return `<div class="wl-row${isRead(iss.id)?' is-read-row':''}" data-drag-issue="${it.issue_id}">
       <div class="wl-cover" style="--accent:${iss.color}" data-issue="${iss.id}">${img}</div>
       <div><div class="wl-title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div><div class="wl-sub">${escapeHtml(iss.arcName)}${isRead(iss.id)?' · read':''}</div></div>
       <button class="del-btn" data-remove-watchlist="${watchlistId}|${it.issue_id}">Remove</button>
@@ -1241,7 +1306,7 @@ function attachMainEvents(){
     if(w){ newWatchlistNameDraft = ''; await refreshWatchlistsAndRender(); }
   });
   const iwb = document.getElementById('importWatchlistBtn');
-  if(iwb) iwb.addEventListener('click', ()=> document.getElementById('importWatchlistFile').click());
+  if(iwb) iwb.addEventListener('click', openCsvImportInfoModal);
   document.querySelectorAll('[data-watchlist-id]').forEach(el=> el.addEventListener('click', ()=>{
     state.viewingWatchlistId = el.dataset.watchlistId;
     setTab('watchlist');
@@ -1254,18 +1319,64 @@ function attachMainEvents(){
   }));
   const uos = document.getElementById('unreadOnlySwitch');
   if(uos) uos.addEventListener('click', ()=>{ state.watchlistShowUnreadOnly = !state.watchlistShowUnreadOnly; render(); });
-  let dragSourceId = null;
-  document.querySelectorAll('.wl-row[draggable]').forEach(row=>{
-    row.addEventListener('dragstart', ()=>{ dragSourceId = row.dataset.dragIssue; row.classList.add('dragging'); });
-    row.addEventListener('dragend', ()=> row.classList.remove('dragging'));
-    row.addEventListener('dragover', e=> e.preventDefault());
-    row.addEventListener('drop', async e=>{
+  document.querySelectorAll('[data-quick-add-toggle]').forEach(btn=> btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const id = btn.dataset.quickAddToggle;
+    const menu = document.getElementById('qam-'+id);
+    const wasOpen = menu.classList.contains('open');
+    document.querySelectorAll('.quick-add-menu.open').forEach(m=>m.classList.remove('open'));
+    if(!wasOpen) menu.classList.add('open');
+  }));
+  document.querySelectorAll('[data-quick-add-to]').forEach(btn=> btn.addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    const [wid, issueId] = btn.dataset.quickAddTo.split('|');
+    if(await addToWatchlist(wid, issueId)) await refreshWatchlistsAndRender();
+  }));
+  document.querySelectorAll('[data-quick-add-new]').forEach(btn=> btn.addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    const issueId = btn.dataset.quickAddNew;
+    const name = window.prompt('New list name:');
+    if(!name || !name.trim()) return;
+    const w = await createWatchlist(name.trim());
+    if(!w) return;
+    watchlists.push(w);
+    if(await addToWatchlist(w.id, issueId)) await refreshWatchlistsAndRender();
+  }));
+  attachTouchReorder();
+}
+document.addEventListener('click', ()=> document.querySelectorAll('.quick-add-menu.open').forEach(m=>m.classList.remove('open')));
+function attachTouchReorder(){
+  let sourceRow = null, sourceId = null, lastTarget = null;
+  document.querySelectorAll('.wl-row').forEach(row=>{
+    const handle = row.querySelector('.drag-handle');
+    if(!handle) return;
+    handle.addEventListener('pointerdown', (e)=>{
       e.preventDefault();
-      const targetId = row.dataset.dragIssue;
-      if(!dragSourceId || dragSourceId===targetId) return;
-      await reorderWatchlist(state.viewingWatchlistId, dragSourceId, targetId);
-      dragSourceId = null;
+      sourceRow = row; sourceId = row.dataset.dragIssue;
+      row.classList.add('dragging');
+      try{ handle.setPointerCapture(e.pointerId); }catch(err){}
     });
+    handle.addEventListener('pointermove', (e)=>{
+      if(!sourceRow) return;
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const overRow = el && el.closest('.wl-row');
+      if(lastTarget && lastTarget!==overRow) lastTarget.classList.remove('drag-over');
+      if(overRow && overRow!==sourceRow){ overRow.classList.add('drag-over'); lastTarget = overRow; }
+      else lastTarget = null;
+    });
+    const finish = async ()=>{
+      if(!sourceRow) return;
+      sourceRow.classList.remove('dragging');
+      const targetId = lastTarget ? lastTarget.dataset.dragIssue : null;
+      if(lastTarget) lastTarget.classList.remove('drag-over');
+      sourceRow = null; lastTarget = null;
+      if(targetId && targetId!==sourceId){
+        await reorderWatchlist(state.viewingWatchlistId, sourceId, targetId);
+      }
+      sourceId = null;
+    };
+    handle.addEventListener('pointerup', finish);
+    handle.addEventListener('pointercancel', finish);
   });
 }
 document.getElementById('importWatchlistFile').addEventListener('change', async (e)=>{
@@ -1376,16 +1487,40 @@ function renderModal(){
     const review = document.getElementById('modalReview').value.trim();
     const alsoLower = document.getElementById('alsoLogLower');
     const ok = await insertLog({ issueId: modalIssueId, dateRead: today, rating: modalRating, review });
+    let loggedIds = ok ? [modalIssueId] : [];
     if(ok && alsoLower && alsoLower.checked && lowerIssues.length){
       await insertLogsBatch(lowerIssues.map(i=>i.id), { dateRead: today, rating: modalRating, review });
+      loggedIds = loggedIds.concat(lowerIssues.map(i=>i.id));
     }
-    if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; }
+    if(ok){ await removeFromReadLater(loggedIds); closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; }
   });
   document.querySelectorAll('[data-del-modal]').forEach(el=> el.addEventListener('click', async ()=>{
     if(await deleteLog(el.dataset.delModal)){ await refreshLogsAndRender(); renderModal(); }
   }));
 }
 document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeModal(); });
+
+/* ---------------- CSV IMPORT — explanation popup ---------------- */
+function openCsvImportInfoModal(){
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('modal').innerHTML = `
+    <button class="close-x" id="closeModal">&times;</button>
+    <div class="modal-head splash"><h3>Import a reading list</h3>
+      <div class="sub">One issue per line — series title, then the number.</div></div>
+    <p class="hint">Accepted formats, semicolon or comma between the series and the number, or just a "#" before it:</p>
+    <div class="csv-example">Amazing Spider-Man;300
+Daredevil;227
+X-Men,129
+Civil War #3</div>
+    <p class="hint">The series title must match one already in the catalogue ("The" at the start and letter case are ignored). A .txt or .xlsx file works the same way. Lines that don't match anything are skipped, no error.</p>
+    <p class="hint">If you're viewing a specific list, the import adds to it. Otherwise you'll be asked which list to use.</p>
+    <button class="splash-btn" id="csvImportChooseFile"><span>CHOOSE FILE</span></button>`;
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  document.getElementById('csvImportChooseFile').addEventListener('click', ()=>{
+    closeModal();
+    document.getElementById('importWatchlistFile').click();
+  });
+}
 
 /* ---------------- EDIT AN EXISTING LOG ---------------- */
 let editLogIds = null, editRating = null;
@@ -1464,7 +1599,7 @@ function renderBatchModal(){
     const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = '<span>Logging…</span>';
     const review = document.getElementById('batchReview').value.trim();
     const ok = await insertLogsBatch(batchIssueIds, { dateRead: today, rating: batchRating, review });
-    if(ok){ closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; btn.innerHTML = `<span>LOG ALL ${batchIssueIds.length}!</span>`; }
+    if(ok){ await removeFromReadLater(batchIssueIds); closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; btn.innerHTML = `<span>LOG ALL ${batchIssueIds.length}!</span>`; }
   });
 }
 
