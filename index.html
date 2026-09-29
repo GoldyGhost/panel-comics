@@ -1325,7 +1325,7 @@ function renderModal(){
     <button class="close-x" id="closeModal">&times;</button>
     <div class="modal-head splash">
       <h3>${escapeHtml(issue.seriesTitle)} #${issue.number}</h3>
-      <div class="sub">${escapeHtml(issue.arcName)} — by ${escapeHtml(issue.writer)}${issue.artist && issue.artist!=='—' ? ' & '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
+      <div class="sub">${escapeHtml(issue.arcName)}${issue.writer && issue.writer!=='—' ? ' — by '+escapeHtml(issue.writer):''}${issue.artist && issue.artist!=='—' ? ' & '+escapeHtml(issue.artist):''}${issue.year?' · '+issue.year:''}</div>
       ${modalCoverEl(issue)}
     </div>
     <div class="field"><label>Rating (optional)</label>
