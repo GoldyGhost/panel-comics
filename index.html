@@ -76,7 +76,7 @@
   .hero-stats .stat span { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
   @media (max-width: 720px) { .hero { grid-template-columns: 1fr; } }
 
-  .row-scroll { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 30px; }
+  .row-scroll { display: flex; gap: 14px; overflow-x: auto; overflow-y: visible; padding-bottom: 8px; margin-bottom: 30px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 16px; }
   .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; -webkit-touch-callout: none; user-select: none; }
   .cover:hover { box-shadow: 6px 6px 0 var(--hover-shadow); }
@@ -742,15 +742,15 @@ function quickAddMenuHtml(issueId){
     <button data-quick-add-new="${issueId}">+ New list…</button>
   </div>`;
 }
-function issueCardHtml(issue){
+function issueCardHtml(issue, opts){
+  const hideQuickAdd = opts && opts.hideQuickAdd;
   const ls = logsForIssue(issue.id);
   const rated = ls.filter(l=>l.rating>0);
   const avg = rated.length ? Math.round(rated.reduce((a,l)=>a+l.rating,0)/rated.length) : null;
   return `<div class="issue-card">${coverEl(issue)}<div class="card-meta">
     <div class="t">#${issue.number}</div><div class="s">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</div>
     ${avg!=null ? `<div class="stars">${starsHtml(avg)}</div>` : ''}
-    <button class="quick-add-btn" data-quick-add-toggle="${issue.id}" title="Add to a list" aria-label="Add to a list">⋯</button>
-    ${quickAddMenuHtml(issue.id)}
+    ${hideQuickAdd ? '' : `<button class="quick-add-btn" data-quick-add-toggle="${issue.id}" title="Add to a list" aria-label="Add to a list">⋯</button>${quickAddMenuHtml(issue.id)}`}
   </div></div>`;
 }
 function avgRatingForIssue(id){
@@ -1025,7 +1025,7 @@ function renderWatchlist(){
         <h3 data-watchlist-id="${w.id}" style="cursor:pointer;text-decoration:underline">${escapeHtml(w.name)} <span class="n">${w.items.length} issue${w.items.length!==1?'s':''} · ${w.items.filter(it=>isRead(it.issue_id)).length}/${w.items.length} read</span></h3>
         ${w.is_default ? '' : `<button class="icon-btn danger" data-delete-watchlist="${w.id}" title="Delete this list" aria-label="Delete this list">${ICON_TRASH}</button>`}
       </div>
-      <div class="grid">${w.items.slice(0,6).map(it=>{ const iss=issueById(it.issue_id); return iss?issueCardHtml(iss):''; }).join('') || '<p class="hint">Empty — add issues here from any issue page.</p>'}</div>
+      <div class="grid">${w.items.slice(0,6).map(it=>{ const iss=issueById(it.issue_id); return iss?issueCardHtml(iss,{hideQuickAdd:true}):''; }).join('') || '<p class="hint">Empty — add issues here from any issue page.</p>'}</div>
       ${w.items.length > 6 ? `<button class="log-group-btn" data-watchlist-id="${w.id}" style="margin-top:10px">View all ${w.items.length} →</button>` : ''}
     </div>`).join('')}
   <div class="section-title"><h2 style="font-size:20px">All reading list issues</h2></div>
@@ -1033,7 +1033,7 @@ function renderWatchlist(){
     <button class="mini-switch${state.watchlistShowUnreadOnly?' on':''}" id="unreadOnlySwitch"><span class="knob"></span></button>
     <span>${state.watchlistShowUnreadOnly ? 'Showing unread only' : 'Showing all issues'}</span>
   </div>
-  ${allIssues.length ? `<div class="grid">${allIssues.map(issueCardHtml).join('')}</div>` : `<div class="empty"><span class="display">Nothing to show</span>${state.watchlistShowUnreadOnly ? 'No unread issues match — try switching the toggle off.' : "Create a list above, then add issues to it from any issue's page."}</div>`}
+  ${allIssues.length ? `<div class="grid">${allIssues.map(i=>issueCardHtml(i,{hideQuickAdd:true})).join('')}</div>` : `<div class="empty"><span class="display">Nothing to show</span>${state.watchlistShowUnreadOnly ? 'No unread issues match — try switching the toggle off.' : "Create a list above, then add issues to it from any issue's page."}</div>`}
   `;
 }
 function renderWatchlistDetail(watchlistId){
@@ -1446,7 +1446,6 @@ function renderModal(){
   const past = logsForIssue(modalIssueId);
   const today = new Date().toISOString().slice(0,10);
   const lowerIssues = issuesCache.filter(i=> i.seriesId===issue.seriesId && i.number < issue.number);
-  const memberships = watchlists.filter(w=> watchlistItems.some(it=>it.watchlist_id===w.id && it.issue_id===issue.id));
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
     <div class="modal-head splash">
@@ -1464,14 +1463,6 @@ function renderModal(){
         </foreignObject>
       </svg>
     </div>
-    <div class="field"><label>Reading list</label>
-      <select id="watchlistSelect">
-        <option value="">Add to a list…</option>
-        ${watchlists.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}${watchlistItems.some(it=>it.watchlist_id===w.id && it.issue_id===issue.id)?' ✓ already in':''}</option>`).join('')}
-        <option value="__new__">+ Create new list…</option>
-      </select>
-      ${memberships.length ? `<p class="hint">In: ${memberships.map(w=>`${escapeHtml(w.name)} <button class="del-btn" data-remove-watchlist="${w.id}|${issue.id}">remove</button>`).join(' · ')}</p>` : ''}
-    </div>
     ${lowerIssues.length ? `<div class="field checkbox-field"><label><input type="checkbox" id="alsoLogLower"> Also log all earlier issues of ${escapeHtml(issue.seriesTitle)} (#${Math.min(...lowerIssues.map(i=>i.number))}–#${Math.max(...lowerIssues.map(i=>i.number))}, ${lowerIssues.length} issue${lowerIssues.length!==1?'s':''})</label></div>` : ''}
     <button class="splash-btn" id="saveLog"><span>LOG IT!</span></button>
     ${past.length ? `<div class="past-logs"><h4>History (${past.length})</h4>
@@ -1480,23 +1471,6 @@ function renderModal(){
   attachStarPicker('starPicker', ()=>modalRating, v=>{ modalRating=v; });
   const coverElNode = document.getElementById('modalCoverEl');
   if(coverElNode && issue.coverUrl) coverElNode.addEventListener('click', ()=> openLightbox(issue.coverUrl));
-  document.getElementById('watchlistSelect').addEventListener('change', async (e)=>{
-    const val = e.target.value;
-    if(val === '__new__'){
-      const name = window.prompt('New watch list name:');
-      if(name && name.trim()){
-        const w = await createWatchlist(name.trim());
-        if(w){ watchlists.push(w); await addToWatchlist(w.id, issue.id); await refreshWatchlistsAndRender(); renderModal(); }
-      } else { e.target.value = ''; }
-    } else if(val){
-      const ok = await addToWatchlist(val, issue.id);
-      if(ok){ await refreshWatchlistsAndRender(); renderModal(); }
-    }
-  });
-  document.querySelectorAll('[data-remove-watchlist]').forEach(el=> el.addEventListener('click', async ()=>{
-    const [wid, iid] = el.dataset.removeWatchlist.split('|');
-    if(await removeFromWatchlist(wid, iid)){ await refreshWatchlistsAndRender(); renderModal(); }
-  }));
   document.getElementById('saveLog').addEventListener('click', async (e)=>{
     const btn = e.currentTarget; btn.disabled = true;
     const review = document.getElementById('modalReview').value.trim();
