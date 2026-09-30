@@ -1344,10 +1344,15 @@ function attachMainEvents(){
     if(!wasOpen){
       menu.classList.add('open'); // measure with real content, still off-screen-safe since display:none is gone but not yet positioned
       const r = btn.getBoundingClientRect();
+      const menuW = menu.offsetWidth;
       const menuH = menu.offsetHeight;
       const openUpward = r.bottom + menuH + 8 > window.innerHeight;
-      menu.style.left = 'auto';
-      menu.style.right = Math.max(4, window.innerWidth - r.right) + 'px';
+      let left = r.right - menuW; // right-align to the button by default
+      if(left < 4) left = r.left; // too close to the left edge: left-align to the button instead
+      left = Math.min(left, window.innerWidth - menuW - 4); // never overflow the right edge either
+      left = Math.max(left, 4);
+      menu.style.right = 'auto';
+      menu.style.left = left + 'px';
       menu.style.top = openUpward ? (r.top - menuH - 4) + 'px' : (r.bottom + 4) + 'px';
     }
   }));
@@ -1369,6 +1374,7 @@ function attachMainEvents(){
   attachTouchReorder();
 }
 document.addEventListener('click', ()=> document.querySelectorAll('.quick-add-menu.open').forEach(m=>m.classList.remove('open')));
+window.addEventListener('scroll', ()=> document.querySelectorAll('.quick-add-menu.open').forEach(m=>m.classList.remove('open')), true);
 function attachTouchReorder(){
   let sourceRow = null, sourceId = null, lastTarget = null;
   document.querySelectorAll('.wl-row').forEach(row=>{
