@@ -677,9 +677,9 @@ async function finishBoot(){
   }
   await ensureDefaultReadingList();
   const [issues, allLogs, followingList, followerList, wls, wlItems] = await Promise.all([
-    fetchIssues(), fetchLogs(), fetchFollowing(), fetchFollowers(), fetchWatchlists(), fetchWatchlistItems()
+    fetchIssues(), fetchLogs(), fetchFollowing(), fetchFollowers(), fetchWatchlists(), fetchWatchlistItems(),
+    fetchHeroesAndLinks() // sets heroesByIssue/allHeroNames itself; run alongside the rest, not after
   ]);
-  await fetchHeroesAndLinks();
   issuesCache = issues;
   splitLogs(allLogs);
   followingIds = new Set(followingList);
@@ -691,10 +691,18 @@ async function finishBoot(){
   profs.forEach(p=>{ followingProfiles[p.id] = p; followerProfiles[p.id] = p; });
   render();
 }
+let logsByIssueId = new Map(); // issue id -> own logs on that issue (built once per fetch, not per card)
+let readIssueIdSet = new Set();
 function splitLogs(allLogs){
   allLogsCache = allLogs;
   logsCache = allLogs.filter(l=> l.userId === session.user.id);
   friendsLogsCache = allLogs.filter(l=> l.userId !== session.user.id);
+  logsByIssueId = new Map();
+  logsCache.forEach(l=>{
+    if(!logsByIssueId.has(l.issueId)) logsByIssueId.set(l.issueId, []);
+    logsByIssueId.get(l.issueId).push(l);
+  });
+  readIssueIdSet = new Set(logsByIssueId.keys());
 }
 async function refreshLogsAndRender(){ splitLogs(await fetchLogs()); render(); }
 async function refreshIssuesAndRender(){ issuesCache = await fetchIssues(); render(); }
@@ -716,8 +724,8 @@ async function refreshWatchlistsAndRender(){
 
 /* ---------------- HELPERS ---------------- */
 function issueById(id){ return issuesCache.find(i=>i.id===id); }
-function logsForIssue(id){ return logsCache.filter(l=>l.issueId===id).sort((a,b)=> b.dateRead.localeCompare(a.dateRead)); }
-function isRead(id){ return logsCache.some(l=>l.issueId===id); }
+function logsForIssue(id){ return (logsByIssueId.get(id) || []).slice().sort((a,b)=> b.dateRead.localeCompare(a.dateRead)); }
+function isRead(id){ return readIssueIdSet.has(id); }
 // Rating is stored 0..10 (half-star units, 2 = 1 star).
 const STAR_PATH = "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z";
 let __starUid = 0;
@@ -864,10 +872,13 @@ function setTab(tab){
 document.getElementById('tabs').addEventListener('click', e=>{
   const b = e.target.closest('button[data-tab]'); if(b){ state.viewingFriendId = null; state.viewingWatchlistId = null; setTab(b.dataset.tab); }
 });
+let searchDebounceTimer = null;
 document.getElementById('searchInput').addEventListener('input', e=>{
   state.search = e.target.value;
   state.browsePage = 1;
-  if(state.tab!=='browse') setTab('browse'); else render();
+  if(state.tab!=='browse'){ setTab('browse'); return; }
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(render, 180);
 });
 
 function render(){
@@ -1019,7 +1030,7 @@ function renderDiaryGroup(group){
     const l = group[0]; const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry">${diaryCoverEl(iss)}
       <div class="diary-info"><div class="title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
-      <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}</div>
+      <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}${iss.year?' · '+iss.year:''}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
       <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}
         ${diaryActionsHtml(l.id, `data-del="${l.id}"`)}</div></div>`;
@@ -1089,7 +1100,7 @@ function renderWatchlistDetail(watchlistId){
     return `<div class="wl-row${isRead(iss.id)?' is-read-row':''}" data-drag-issue="${it.issue_id}">
       <div class="wl-cover" style="--accent:${iss.color}" data-issue="${iss.id}">${img}</div>
       <div><div class="wl-title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div><div class="wl-sub">${escapeHtml(iss.arcName)}${isRead(iss.id)?' · read':''}</div></div>
-      <button class="del-btn" data-remove-watchlist="${watchlistId}|${it.issue_id}">Remove</button>
+      <button class="icon-btn danger" data-remove-watchlist="${watchlistId}|${it.issue_id}" title="Remove from list" aria-label="Remove from list">${ICON_TRASH}</button>
       <span class="drag-handle">⠿</span>
     </div>`;
   }).join('') : `<div class="empty"><span class="display">This list is empty</span>Add issues to it from any issue's page, or from a Browse group.</div>`}`;
@@ -1111,17 +1122,47 @@ function renderFriendBlock(userId){
     }).join('')}</div>
   </div>`;
 }
+function friendStatsHtml(allLogs){
+  const distinctRead = new Set(allLogs.map(l=>l.issueId)).size;
+  const rated = allLogs.filter(l=>l.rating>0);
+  const avg = rated.length ? (rated.reduce((a,l)=>a+l.rating,0)/rated.length/2).toFixed(2) : '—';
+  const bySeries = {}; const byWriter = {}; const byHero = {};
+  allLogs.forEach(l=>{ const iss=issueById(l.issueId); if(!iss) return;
+    bySeries[iss.seriesTitle]=(bySeries[iss.seriesTitle]||0)+1; byWriter[iss.writer]=(byWriter[iss.writer]||0)+1;
+    (heroesByIssue[l.issueId]||[]).forEach(name=>{ byHero[name]=(byHero[name]||0)+1; }); });
+  const topSeries = Object.entries(bySeries).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const topWriters = Object.entries(byWriter).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const topHeroes = Object.entries(byHero).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxS = Math.max(1, ...topSeries.map(s=>s[1])); const maxW = Math.max(1, ...topWriters.map(s=>s[1])); const maxH = Math.max(1, ...topHeroes.map(s=>s[1]));
+  function bars(list,max){ return list.map(([k,v])=>`<div class="bar-row"><div>${escapeHtml(k)}</div><div class="bar-track"><div class="bar-fill" style="width:${(v/max*100)}%"></div></div><div>${v}</div></div>`).join(''); }
+  return `<div class="stats-grid">
+    <div class="stat-card"><b>${allLogs.length}</b><span>Total reads</span></div>
+    <div class="stat-card"><b>${distinctRead}</b><span>Distinct issues</span></div>
+    <div class="stat-card"><b>${avg}${avg==='—'?'':'<small style="font-size:0.55em">/5</small>'}</b><span>Average rating</span></div>
+    <div class="stat-card"><b>${Object.keys(bySeries).length}</b><span>Series explored</span></div>
+    <div class="stat-card"><b style="font-size:20px">${topHeroes.length ? escapeHtml(topHeroes[0][0]) : '—'}</b><span>Favorite hero</span></div>
+  </div>
+  ${topSeries.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read series</h2></div><div style="margin-bottom:22px">${bars(topSeries,maxS)}</div>` : ''}
+  ${topWriters.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read writers</h2></div><div style="margin-bottom:22px">${bars(topWriters,maxW)}</div>` : ''}
+  ${topHeroes.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read characters</h2></div><div>${bars(topHeroes,maxH)}</div>` : ''}`;
+}
 function renderFriendFullDiary(userId){
   const p = followingProfiles[userId] || followerProfiles[userId];
-  let logs = friendsLogsCache.filter(l=>l.userId===userId);
+  const allLogs = friendsLogsCache.filter(l=>l.userId===userId);
+  const recent = allLogs.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,6);
+  let logs = allLogs;
   const allSeries = Array.from(new Set(logs.map(l=>{ const i=issueById(l.issueId); return i?i.seriesTitle:null; }).filter(Boolean))).sort();
   if(state.friendFilterSeries) logs = logs.filter(l=>{ const i=issueById(l.issueId); return i && i.seriesTitle===state.friendFilterSeries; });
   if(state.friendFilterRating==='unrated') logs = logs.filter(l=>l.rating==null);
   else if(state.friendFilterRating==='rated') logs = logs.filter(l=>l.rating>0);
   else if(state.friendFilterRating){ const min = parseInt(state.friendFilterRating,10); logs = logs.filter(l=> l.rating>0 && l.rating>=min); }
   logs = logs.slice().sort((a,b)=> state.friendSortOrder==='asc' ? a.dateRead.localeCompare(b.dateRead) : b.dateRead.localeCompare(a.dateRead));
-  return `<div class="section-title"><h2>@${escapeHtml(p?p.username:'user')}</h2><span class="count">${logs.length} logged read${logs.length!==1?'s':''}</span></div>
+  return `<div class="section-title"><h2>@${escapeHtml(p?p.username:'user')}</h2><span class="count">${allLogs.length} logged read${allLogs.length!==1?'s':''}</span></div>
   <button class="log-group-btn" id="backToFriends" style="margin-bottom:18px">← Back to Friends</button>
+  ${allLogs.length ? friendStatsHtml(allLogs) : `<div class="empty"><span class="display">No reads yet</span></div>`}
+  ${recent.length ? `<div class="section-title"><h2 style="font-size:20px">Recent reads</h2></div>
+  <div class="row-scroll">${recent.map(l=>{ const iss=issueById(l.issueId); return iss?`<div style="width:140px;flex-shrink:0">${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
+  <div class="section-title"><h2 style="font-size:20px">All reads</h2></div>
   <div class="browse-controls">
     <label>Series</label>
     <select id="friendSeriesFilter">
@@ -1147,7 +1188,7 @@ function renderFriendFullDiary(userId){
     const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry">${diaryCoverEl(iss)}
       <div class="diary-info"><div class="title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
-      <div class="sub">${escapeHtml(iss.arcName)}</div>
+      <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}${iss.year?' · '+iss.year:''}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
       <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
   }).join('') : `<div class="empty"><span class="display">No reads match these filters</span></div>`}`;
