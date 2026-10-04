@@ -426,6 +426,10 @@ function hideLoadingScreen(){
   const el = document.getElementById('loadingScreen');
   if(el) el.style.display = 'none';
 }
+function showLoadingScreen(){
+  const el = document.getElementById('loadingScreen');
+  if(el) el.style.display = 'flex';
+}
 function showAuthScreen(){
   hideLoadingScreen();
   document.getElementById('app').style.display = 'none';
@@ -488,6 +492,7 @@ document.getElementById('usernameForm').addEventListener('submit', async (e)=>{
     return;
   }
   myProfile = { id: session.user.id, username };
+  showLoadingScreen();
   showApp();
   await finishBoot();
 });
@@ -697,6 +702,7 @@ async function reorderWatchlist(watchlistId, sourceIssueId, targetIssueId){
 }
 
 async function boot(){
+  showLoadingScreen(); // boot() also runs right after a fresh sign-in/sign-up, when it was already hidden
   myProfile = await fetchProfile();
   if(!myProfile){ showUsernamePrompt(); return; }
   showApp();
