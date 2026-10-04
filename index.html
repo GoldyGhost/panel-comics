@@ -229,10 +229,23 @@
 
   footer { text-align: center; padding: 30px 18px 50px; font-size: 11.5px; color: var(--ink-soft); }
 
+  .loading-screen { position: fixed; inset: 0; z-index: 100; background: var(--paper); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+  .loading-mark { font-family: 'Bangers', sans-serif; font-size: 44px; color: var(--red); text-shadow: 2px 2px 0 var(--ink); }
+  .loading-spinner { display: flex; gap: 8px; }
+  .loading-spinner span { width: 12px; height: 12px; border-radius: 50%; background: var(--gold); border: 2px solid var(--ink); animation: loading-bounce 0.9s ease-in-out infinite; }
+  .loading-spinner span:nth-child(2) { animation-delay: 0.15s; }
+  .loading-spinner span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes loading-bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } }
+  .loading-text { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
+
   /* MOBILE */
   @media (max-width: 480px) {
     .logo .sub { display: none; }
-    nav.tabs button { padding: 6px 8px; font-size: 12.5px; }
+    .top-inner { flex-wrap: wrap; gap: 6px 10px; }
+    .logo { order: 1; }
+    .user-chip { order: 2; }
+    nav.tabs { order: 3; width: 100%; margin-left: 0; flex-wrap: nowrap; overflow-x: auto; gap: 2px; -webkit-overflow-scrolling: touch; }
+    nav.tabs button { padding: 6px 7px; font-size: 10.8px; flex: 1 0 auto; white-space: nowrap; }
     main { padding: 16px 12px 70px; }
     .hero { padding: 20px 18px; }
     .hero h1 { font-size: 30px; }
@@ -262,6 +275,12 @@
   <strong>Missing configuration.</strong> Open <code>config.js</code> and replace
   <code>SUPABASE_URL</code> and <code>SUPABASE_ANON_KEY</code> with the values from
   your own Supabase project (Project Settings → API). See the README.
+</div>
+
+<div id="loadingScreen" class="loading-screen">
+  <span class="loading-mark">Tomics</span>
+  <div class="loading-spinner"><span></span><span></span><span></span></div>
+  <p class="loading-text">Loading your comics…</p>
 </div>
 
 <div id="app" style="display:none">
@@ -403,12 +422,18 @@ let authMode = 'login';
 let lastGroups = {}; // populated by renderBrowse, used by the "Log all" / "Add all" actions
 
 /* ---------------- AUTH ---------------- */
+function hideLoadingScreen(){
+  const el = document.getElementById('loadingScreen');
+  if(el) el.style.display = 'none';
+}
 function showAuthScreen(){
+  hideLoadingScreen();
   document.getElementById('app').style.display = 'none';
   document.getElementById('usernameScreen').style.display = 'none';
   document.getElementById('authScreen').style.display = 'block';
 }
 function showUsernamePrompt(){
+  hideLoadingScreen();
   document.getElementById('app').style.display = 'none';
   document.getElementById('authScreen').style.display = 'none';
   document.getElementById('usernameScreen').style.display = 'block';
@@ -697,6 +722,7 @@ async function finishBoot(){
   followingProfiles = {}; followerProfiles = {};
   profs.forEach(p=>{ followingProfiles[p.id] = p; followerProfiles[p.id] = p; });
   render();
+  hideLoadingScreen();
 }
 let logsByIssueId = new Map(); // issue id -> own logs on that issue (built once per fetch, not per card)
 let readIssueIdSet = new Set();
@@ -802,21 +828,22 @@ function avgRatingForIssue(id){
   if(!rated.length) return null;
   return rated.reduce((a,l)=>a+l.rating,0)/rated.length; // 0..10 scale
 }
+function normSearch(s){ return (s||'').toLowerCase().replace(/[-\s.:,'’]+/g, ''); }
 function filteredIssues(){
   const raw = state.search.trim();
   let list = issuesCache;
   if(raw){
     const m = raw.match(/^(.*?)\s*#?(\d+(?:\.\d+)?)\s*$/);
     if(m && m[1].trim()){
-      const textPart = m[1].trim().toLowerCase();
+      const textPart = normSearch(m[1]);
       const num = parseFloat(m[2]);
-      list = list.filter(i => i.number === num && (i.seriesTitle+' '+i.writer+' '+i.artist+' '+i.arcName+' '+i.runName).toLowerCase().includes(textPart));
+      list = list.filter(i => i.number === num && normSearch(i.seriesTitle+' '+i.writer+' '+i.artist+' '+i.arcName+' '+i.runName).includes(textPart));
     } else if(m){
       const num = parseFloat(m[2]);
       list = list.filter(i => i.number === num);
     } else {
-      const q = raw.toLowerCase();
-      list = list.filter(i => (i.seriesTitle+' '+i.writer+' '+i.artist+' '+i.arcName+' '+i.runName+' #'+i.number).toLowerCase().includes(q));
+      const q = normSearch(raw);
+      list = list.filter(i => normSearch(i.seriesTitle+' '+i.writer+' '+i.artist+' '+i.arcName+' '+i.runName+' #'+i.number).includes(q));
     }
   }
   if(state.filterYearFrom) list = list.filter(i => i.year && i.year >= parseInt(state.filterYearFrom,10));
