@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PANEL — Comics Reading Log</title>
+<title>Tomics — Comics Reading Log</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#C8202A">
+<link rel="icon" href="/icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tomics">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -261,7 +268,7 @@
   <header class="top">
     <div class="top-inner">
       <div class="logo">
-        <span class="mark">PANEL</span>
+        <span class="mark">Tomics</span>
         <span class="sub">a comics reading log</span>
       </div>
       <nav class="tabs" id="tabs">
@@ -281,13 +288,13 @@
     </div>
   </header>
   <main id="main"></main>
-  <footer>PANEL — connected to your Supabase database. Each account has its own diary; the issue catalog is shared.<br>
-  Cover art and issue data courtesy of Marvel / <a href="https://comicvine.gamespot.com" target="_blank" rel="noopener">Comic Vine</a>. MARVEL and all related characters are trademarks of Marvel Characters, Inc. PANEL is an unofficial, non-commercial fan project for personal use, not affiliated with, endorsed by, or sponsored by Marvel.</footer>
+  <footer>Tomics — connected to your Supabase database. Each account has its own diary; the issue catalog is shared.<br>
+  Cover art and issue data courtesy of Marvel / <a href="https://comicvine.gamespot.com" target="_blank" rel="noopener">Comic Vine</a>. MARVEL and all related characters are trademarks of Marvel Characters, Inc. Tomics is an unofficial, non-commercial fan project for personal use, not affiliated with, endorsed by, or sponsored by Marvel.</footer>
 </div>
 
 <div id="authScreen" class="auth-wrap" style="display:none">
   <div class="auth-card">
-    <h1 class="display">PANEL</h1>
+    <h1 class="display">Tomics</h1>
     <p class="lede">Sign in to get back to your reading log, or create an account.</p>
     <div class="auth-toggle">
       <button id="toLogin" class="active">Sign in</button>
@@ -1709,6 +1716,12 @@ function renderBatchModal(){
 })();
 
 })();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/sw.js').catch(err=> console.warn('Service worker registration failed:', err));
+  });
+}
 </script>
 </body>
 </html>
