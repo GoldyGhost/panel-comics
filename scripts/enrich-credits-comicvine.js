@@ -1,28 +1,26 @@
 // ============================================================
-// scripts/enrich-covers-comicvine.js
+// scripts/enrich-credits-comicvine.js
 //
-// Fills cover_url for issues ALREADY present in your `issues` table.
-// Never creates new rows: only updates cover_url on existing rows.
+// Fills writer/artist for issues that still hold the "—" placeholder
+// (mostly the big Kang & Multiverse batch, added without per-issue
+// credits at the time). Never touches cover_url, run_name or arc_name.
+// Matches per RUN (series_title + run_name) using the same
+// candidate-volume verification as enrich-covers-comicvine.js, then
+// does one extra per-issue detail call to read the actual credited
+// roles (the issues list endpoint doesn't include roles, only names).
 //
-// "Not found" marker: an issue Comic Vine genuinely has no cover for
-// (checked, none found in any candidate volume) gets cover_url set to
-// '' (empty string) instead of staying NULL. By default this script
-// only searches rows where cover_url IS NULL — issues never looked up
+// "Not found" marker: same convention as enrich-covers-comicvine.js.
+// An issue genuinely checked with no writer/artist found on Comic Vine
+// gets both fields set to '' instead of staying at '—'. By default
+// this script only searches rows where writer = '—' — never looked up
 // yet — so re-running it never wastes quota re-searching the same
 // misses. Pass --include-not-found to also retry the '' ones, always
-// AFTER the never-tried ones, in case Comic Vine's own data improved.
-//
-// Matches per RUN (series_title + run_name), not per whole series:
-// a title like "X-Men" or "Daredevil" has existed as dozens of
-// different Comic Vine volumes over the decades, so matching by
-// series alone often grabs the wrong one. For each run, several
-// candidate volumes are tried (closest publication year first) and
-// verified against the actual issue numbers before being used.
+// AFTER the never-tried ones.
 //
 // Usage :
-//   node scripts/enrich-covers-comicvine.js
-//   node scripts/enrich-covers-comicvine.js --series "House of M"
-//   node scripts/enrich-covers-comicvine.js --include-not-found
+//   node scripts/enrich-credits-comicvine.js
+//   node scripts/enrich-credits-comicvine.js --series "Fantastic Four"
+//   node scripts/enrich-credits-comicvine.js --include-not-found
 // ============================================================
 
 import { createClient } from "@supabase/supabase-js";
@@ -40,29 +38,22 @@ if (!COMICVINE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 const DELAY_MS = 0; // pacing and rate limits are handled by lib/comicvine.js
 const MAX_CANDIDATES = 10;
-// Matches a row whose cover_url is either untried (NULL) or a previous
-// confirmed miss (''), so an UPDATE still lands during a --include-not-found
-// retry pass (where the row is already '', not NULL).
-const NOT_YET_FOUND = "cover_url.is.null,cover_url.eq.";
+// Matches a row whose writer is either untried ("—") or a previous
+// confirmed miss (''), so an UPDATE still lands during a
+// --include-not-found retry pass (where the row is already '', not "—").
+const NOT_YET_FOUND = "writer.eq.—,writer.eq.";
 
-// Returns up to MAX_CANDIDATES volumes for this title, closest publication
-// year first, Marvel-published preferred when the info is available.
+// Same exact-name-first matching as enrich-covers-comicvine.js.
 async function findVolumeCandidates(title, approxYear) {
   let pool = [];
   try {
-    const res = await cvGet(
-      "/volumes/",
-      `filter=name:${encodeURIComponent(title)}&field_list=id,name,start_year,publisher,count_of_issues&limit=100`
-    );
+    const res = await cvGet("/volumes/", `filter=name:${encodeURIComponent(title)}&field_list=id,name,start_year,publisher&limit=100`);
     pool = res.results || [];
   } catch (e) {
     console.log(`  [debug] /volumes/ lookup failed (${e.message}), falling back to /search/`);
   }
   if (!pool.length) {
-    const res = await cvGet(
-      "/search/",
-      `resources=volume&query=${encodeURIComponent(title)}&field_list=id,name,start_year,publisher,count_of_issues&limit=50`
-    );
+    const res = await cvGet("/search/", `resources=volume&query=${encodeURIComponent(title)}&field_list=id,name,start_year,publisher&limit=50`);
     pool = res.results || [];
   }
   const marvel = pool.filter((v) => v.publisher?.name === "Marvel");
@@ -75,50 +66,66 @@ async function findVolumeCandidates(title, approxYear) {
     if (aExact !== bExact) return aExact - bExact;
     return Math.abs((a.start_year || 0) - approxYear) - Math.abs((b.start_year || 0) - approxYear);
   });
-  console.log(`  [debug] ${pool.length} candidate volume(s) found, exact-name matches first: ${pool.slice(0, 15).map(v => `${v.name} (${v.start_year || "?"})`).join(", ")}${pool.length > 15 ? "…" : ""}`);
   return pool.slice(0, MAX_CANDIDATES);
 }
 
-// Tries one candidate volume: pages through its issues, updates cover_url
-// for every number still in `wanted`, and removes matched numbers from it.
+function pickRole(personCredits, keywords) {
+  if (!personCredits) return null;
+  const hit = personCredits.find((p) => keywords.some((k) => (p.role || "").toLowerCase().includes(k)));
+  return hit?.name || null;
+}
+
+async function fetchIssueCredits(cvIssueId) {
+  const json = await cvGet(`/issue/4000-${cvIssueId}/`, "field_list=person_credits");
+  return json.results.person_credits;
+}
+
+// Tries one candidate volume: for every wanted number found in it,
+// fetches the issue detail to read credited roles, then updates the
+// matching row (only if it still holds the "—" or "" placeholder).
 async function tryVolume(volume, seriesTitle, runName, wanted) {
   let offset = 0, total = Infinity, found = 0;
   while (offset < total) {
-    const page = await cvGet(
-      "/issues/",
-      `filter=volume:${volume.id}&limit=100&offset=${offset}&field_list=issue_number,image`
-    );
+    const page = await cvGet("/issues/", `filter=volume:${volume.id}&limit=100&offset=${offset}&field_list=id,issue_number`);
     total = page.number_of_total_results;
     for (const issue of page.results) {
       const key = String(parseFloat(issue.issue_number));
       if (!wanted.has(key)) continue;
-      const coverUrl = issue.image?.original_url || issue.image?.medium_url || null;
-      if (!coverUrl) continue;
+      await sleep(DELAY_MS);
+      let credits;
+      try { credits = await fetchIssueCredits(issue.id); }
+      catch (e) { console.log(`    couldn't fetch credits for #${key}: ${e.message}`); continue; }
+      const writer = pickRole(credits, ["writer"]);
+      const artist = pickRole(credits, ["penciler", "penciller", "artist"]);
+      if (!writer && !artist) continue;
       const row = wanted.get(key);
+      const updates = {};
+      if (writer) updates.writer = writer;
+      if (artist) updates.artist = artist;
       const { error } = await supabase
-        .from("issues").update({ cover_url: coverUrl })
+        .from("issues").update(updates)
         .eq("series_title", seriesTitle).eq("run_name", runName).eq("number", row.number)
         .or(NOT_YET_FOUND);
       if (error) { console.error(`    update error #${key}:`, error.message); continue; }
       found++;
       wanted.delete(key);
-      console.log(`    ✓ #${key}`);
+      console.log(`    ✓ #${key} — ${writer || "?"}${artist ? " / " + artist : ""}`);
     }
     offset += 100;
-    await sleep(DELAY_MS);
     if (wanted.size === 0) break;
   }
   return found;
 }
 
-// Marks every number still left in `wanted` (not found in ANY candidate
-// volume) as '' rather than leaving it NULL, so future default runs skip
-// it instead of re-searching for a cover that isn't there.
+// Marks every number still left in `wanted` (no writer/artist found in
+// ANY candidate volume) as '' rather than leaving it "—", so future
+// default runs skip it instead of re-searching for credits that aren't
+// findable on Comic Vine.
 async function markNotFound(seriesTitle, runName, wanted) {
   if (!wanted.size) return;
   const numbers = [...wanted.values()].map((r) => r.number);
   const { error } = await supabase
-    .from("issues").update({ cover_url: "" })
+    .from("issues").update({ writer: "", artist: "" })
     .eq("series_title", seriesTitle).eq("run_name", runName).in("number", numbers)
     .or(NOT_YET_FOUND);
   if (error) { console.error("  mark-not-found error:", error.message); return; }
@@ -145,8 +152,9 @@ async function enrichGroup(seriesTitle, runName, rows) {
     const found = await tryVolume(cand, seriesTitle, runName, wanted);
     totalFound += found;
     if (found === 0) console.log("    no match in this volume, trying next candidate.");
+    await sleep(DELAY_MS);
   }
-  console.log(`  → ${totalFound}/${rows.length} cover(s) found for this run.`);
+  console.log(`  → ${totalFound}/${rows.length} credit(s) found for this run.`);
   await markNotFound(seriesTitle, runName, wanted);
 }
 
@@ -161,9 +169,9 @@ function buildGroups(rows, onlySeries) {
 }
 
 async function fetchRows(wantEmpty) {
-  let q = supabase.from("issues").select("series_title, run_name, number, year");
-  q = wantEmpty ? q.eq("cover_url", "") : q.is("cover_url", null);
-  const { data, error } = await q;
+  const { data, error } = await supabase
+    .from("issues").select("series_title, run_name, number, year")
+    .eq("writer", wantEmpty ? "" : "—");
   if (error) throw error;
   return data;
 }

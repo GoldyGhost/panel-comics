@@ -5,7 +5,10 @@
   "description": "Script d'import du catalogue Marvel vers Supabase (voir scripts/import-marvel.js).",
   "scripts": {
     "import:comicvine": "node --env-file=.env scripts/import-comicvine.js",
+    "import:csv": "node --env-file=.env scripts/import-csv.js",
     "enrich:covers": "node --env-file=.env scripts/enrich-covers-comicvine.js",
+    "enrich:credits": "node --env-file=.env scripts/enrich-credits-comicvine.js",
+    "enrich:heroes": "node --env-file=.env scripts/enrich-heroes-comicvine.js",
     "import:marvel": "node --env-file=.env scripts/import-marvel.js"
   },
   "dependencies": {

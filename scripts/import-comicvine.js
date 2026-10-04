@@ -18,6 +18,7 @@
 // ============================================================
 
 import { createClient } from "@supabase/supabase-js";
+import { cvGet, sleep } from "./lib/comicvine.js";
 
 const COMICVINE_API_KEY = process.env.COMICVINE_API_KEY;
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -30,32 +31,8 @@ if (!COMICVINE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const BASE_URL = "https://comicvine.gamespot.com/api";
 const PAGE_LIMIT = 100;
-const DELAY_MS = 1000; // Comic Vine limite le débit par heure : on reste prudent
-
-// Comic Vine exige un User-Agent identifiable, sinon il renvoie une erreur 420.
-// Remplace l'email par le tien (pas obligatoire que ce soit fonctionnel, mais
-// recommandé par leurs conditions d'utilisation).
-const HEADERS = { "User-Agent": "PANEL-comics-log/1.0 (contact: ton-email@example.com)" };
-
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-async function cvGet(path, params = "") {
-  const url = `${BASE_URL}${path}?api_key=${COMICVINE_API_KEY}&format=json${params ? "&" + params : ""}`;
-  const res = await fetch(url, { headers: HEADERS });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Comic Vine ${res.status} sur ${path} : ${body.slice(0, 200)}`);
-  }
-  const json = await res.json();
-  if (json.status_code !== 1) {
-    throw new Error(`Comic Vine erreur "${json.error}" sur ${path}`);
-  }
-  return json;
-}
+const DELAY_MS = 0; // pacing and rate limits are handled by lib/comicvine.js
 
 function pickRole(personCredits, keywords) {
   if (!personCredits) return null;
@@ -85,7 +62,7 @@ function toIssueRow(issue, seriesTitle, volumeId) {
 
 async function upsertIssues(rows) {
   if (!rows.length) return;
-  const { error } = await supabase.from("issues").upsert(rows, { onConflict: "id" });
+  const { error } = await supabase.from("issues").upsert(rows, { onConflict: "series_id,number,year" });
   if (error) throw error;
   console.log(`  → ${rows.length} issues synchronisées`);
 }
@@ -121,17 +98,27 @@ async function importVolume(volumeId, seriesTitleOverride) {
 }
 
 async function importByTitle(title) {
-  const res = await cvGet("/search/", `resources=volume&query=${encodeURIComponent(title)}&field_list=id,name,start_year,publisher&limit=10`);
-  if (!res.results.length) {
+  // /volumes/?filter=name: lists every volume whose name contains the title
+  // (broader than /search/, which sometimes truncates before the real hit).
+  const res = await cvGet("/volumes/", `filter=name:${encodeURIComponent(title)}&field_list=id,name,start_year,publisher&limit=100`);
+  const norm = (s) => (s || "").trim().toLowerCase().replace(/^the\s+/, "");
+  const targetNorm = norm(title);
+  const exact = res.results.filter((v) => norm(v.name) === targetNorm);
+  const pool = exact.length ? exact : res.results;
+  const marvelResults = pool.filter((v) => v.publisher?.name === "Marvel");
+  const candidates = marvelResults.length ? marvelResults : pool;
+  if (!candidates.length) {
     console.error(`Aucune série trouvée pour "${title}"`);
     return;
   }
-  const marvelResults = res.results.filter((v) => v.publisher?.name === "Marvel");
-  const candidates = marvelResults.length ? marvelResults : res.results;
-  console.log(`${candidates.length} correspondance(s) pour "${title}" :`);
-  candidates.forEach((v) => console.log(`  - volume ${v.id} : "${v.name}" (${v.start_year}, ${v.publisher?.name || "éditeur inconnu"})`));
-  // Importe la première correspondance Marvel (ou la première tout court à défaut).
-  await importVolume(candidates[0].id, candidates[0].name);
+  candidates.sort((a, b) => (a.start_year || 0) - (b.start_year || 0));
+  console.log(`${candidates.length} volume(s) Marvel exactement nommé(s) "${title}" trouvé(s) :`);
+  candidates.forEach((v) => console.log(`  - volume ${v.id} : "${v.name}" (${v.start_year || "?"})`));
+  console.log("Import de chacun, dans l'ordre chronologique…\n");
+  for (const v of candidates) {
+    await importVolume(v.id, title); // garde le titre demandé comme series_title, pour rester cohérent
+    await sleep(DELAY_MS);
+  }
 }
 
 async function main() {

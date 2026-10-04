@@ -1,0 +1,1303 @@
+# GCD dump: D:\Projet\Panel\GDB.db
+# 79 tables/views
+
+## django_content_type [table] — 192 rows
+CREATE TABLE `django_content_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `app_label` varchar(100) NOT NULL
+,  `model` varchar(100) NOT NULL
+,  UNIQUE (`app_label`,`model`)
+)
+  sample: id=1 | app_label=auth | model=permission
+  sample: id=2 | app_label=auth | model=group
+
+## gcd_award [table] — 377 rows
+CREATE TABLE `gcd_award` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(200) NOT NULL
+,  `created` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `modified` datetime NOT NULL
+,  `notes` longtext NOT NULL
+)
+  sample: id=1 | name=9th Art Award, The | created=2018-01-01 00:00:00 | deleted=0 | modified=2019-06-14 02:03:22 | notes=2013 - The Gigantic Beard That Was Evil (published by Jonathan Cape)
+  sample: id=2 | name=Academy of Comic Book Arts | created=2018-01-01 00:00:00 | deleted=0 | modified=2018-01-01 00:00:00 | notes=
+
+## gcd_biblio_entry [table] — 8738 rows
+CREATE TABLE `gcd_biblio_entry` (
+  `story_ptr_id` integer NOT NULL
+,  `page_began` integer DEFAULT NULL
+,  `page_ended` integer DEFAULT NULL
+,  `abstract` longtext NOT NULL
+,  `doi` longtext NOT NULL
+,  PRIMARY KEY (`story_ptr_id`)
+,  CONSTRAINT `gcd_biblio_entry_story_ptr_id_d8f3d929_fk_gcd_story_id` FOREIGN KEY (`story_ptr_id`) REFERENCES `gcd_story` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: story_ptr_id=202402 | page_began=NULL | page_ended=NULL | abstract= | doi=
+  sample: story_ptr_id=203245 | page_began=NULL | page_ended=NULL | abstract= | doi=
+
+## gcd_brand [table] — 11875 rows
+CREATE TABLE `gcd_brand` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `year_began` integer DEFAULT NULL
+,  `year_ended` integer DEFAULT NULL
+,  `notes` longtext NOT NULL
+,  `url` varchar(255) NOT NULL
+,  `issue_count` integer NOT NULL DEFAULT '0'
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL DEFAULT '0'
+,  `year_began_uncertain` integer NOT NULL DEFAULT '0'
+,  `year_ended_uncertain` integer NOT NULL DEFAULT '0'
+,  `year_overall_began` integer DEFAULT NULL
+,  `year_overall_began_uncertain` integer NOT NULL
+,  `year_overall_ended` integer DEFAULT NULL
+,  `year_overall_ended_uncertain` integer NOT NULL
+,  `generic` integer NOT NULL
+)
+  sample: id=1 | name=DC [bullet] | year_began=1977 | year_ended=NULL | notes=Commonly called the DC bullet. Designed by Milton Glaser. Replaced by the DC Swi… | url=http://www.dccomics.com/ | issue_count=18269 | created=2009-12-07 00:00:00 | modified=2026-09-15 02:07:51 | deleted=0 | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_began_uncertain=0 | year_overall_ended=NULL | year_overall_ended_uncertain=0 | generic=0
+  sample: id=2 | name=A DC Publication | year_began=1940 | year_ended=1944 | notes=The first DC brand. Followed by "A Superman DC Publication". It continued being … | url= | issue_count=162 | created=2009-12-07 00:00:00 | modified=2025-09-30 13:25:24 | deleted=0 | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_began_uncertain=0 | year_overall_ended=NULL | year_overall_ended_uncertain=0 | generic=0
+
+## gcd_brand_emblem_group [table] — 13320 rows
+CREATE TABLE `gcd_brand_emblem_group` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `brand_id` integer NOT NULL
+,  `brandgroup_id` integer NOT NULL
+,  UNIQUE (`brand_id`,`brandgroup_id`)
+,  CONSTRAINT `brand_id_refs_id_499c2f828021a0a5` FOREIGN KEY (`brand_id`) REFERENCES `gcd_brand` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `brandgroup_id_refs_id_3d239edd15609953` FOREIGN KEY (`brandgroup_id`) REFERENCES `gcd_brand_group` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | brand_id=1552 | brandgroup_id=1
+  sample: id=2 | brand_id=622 | brandgroup_id=2
+
+## gcd_brand_group [table] — 8508 rows
+CREATE TABLE `gcd_brand_group` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `year_began` integer DEFAULT NULL
+,  `year_ended` integer DEFAULT NULL
+,  `year_began_uncertain` integer NOT NULL
+,  `year_ended_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `url` varchar(255) NOT NULL
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `parent_id` integer NOT NULL
+,  `issue_count` integer NOT NULL
+,  `year_overall_began` integer DEFAULT NULL
+,  `year_overall_began_uncertain` integer NOT NULL
+,  `year_overall_ended` integer DEFAULT NULL
+,  `year_overall_ended_uncertain` integer NOT NULL
+,  CONSTRAINT `parent_id_refs_id_37eff265bd014aa2` FOREIGN KEY (`parent_id`) REFERENCES `gcd_publisher` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | name= Åhlén & Åkerlund | year_began=NULL | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | notes= | url= | created=2013-10-26 08:13:05 | modified=2013-10-26 08:13:06 | deleted=0 | parent_id=320 | issue_count=0 | year_overall_began=NULL | year_overall_began_uncertain=0 | year_overall_ended=NULL | year_overall_ended_uncertain=0
+  sample: id=2 | name= Brian Babendererde | year_began=2007 | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | notes= | url=http://www.twilighttangents.com/ | created=2013-10-26 08:13:08 | modified=2013-10-26 08:13:09 | deleted=0 | parent_id=5986 | issue_count=1 | year_overall_began=NULL | year_overall_began_uncertain=0 | year_overall_ended=NULL | year_overall_ended_uncertain=0
+
+## gcd_brand_use [table] — 12254 rows
+CREATE TABLE `gcd_brand_use` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `publisher_id` integer NOT NULL
+,  `emblem_id` integer NOT NULL
+,  `year_began` integer DEFAULT NULL
+,  `year_ended` integer DEFAULT NULL
+,  `year_began_uncertain` integer NOT NULL
+,  `year_ended_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  CONSTRAINT `emblem_id_refs_id_66e921df4498a093` FOREIGN KEY (`emblem_id`) REFERENCES `gcd_brand` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `publisher_id_refs_id_4bf8142e98fbb94c` FOREIGN KEY (`publisher_id`) REFERENCES `gcd_publisher` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | publisher_id=320 | emblem_id=1552 | year_began=NULL | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | notes= | created=2013-10-26 00:00:00.000000 | modified=2013-10-26 00:00:00.000000
+  sample: id=2 | publisher_id=5986 | emblem_id=622 | year_began=2007 | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | notes= | created=2013-10-26 00:00:00.000000 | modified=2013-10-26 00:00:00.000000
+
+## gcd_character [table] — 72617 rows
+CREATE TABLE `gcd_character` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `sort_name` varchar(255) NOT NULL
+,  `disambiguation` varchar(255) NOT NULL
+,  `year_first_published` integer DEFAULT NULL
+,  `year_first_published_uncertain` integer NOT NULL
+,  `description` longtext NOT NULL
+,  `notes` longtext NOT NULL
+,  `language_id` integer NOT NULL
+,  `universe_id` integer DEFAULT NULL
+,  CONSTRAINT `gcd_character_language_id_a766f96d_fk_stddata_language_id` FOREIGN KEY (`language_id`) REFERENCES `stddata_language` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_character_universe_id_1058453c_fk_gcd_universe_id` FOREIGN KEY (`universe_id`) REFERENCES `gcd_universe` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2021-02-13 16:30:56.554286 | modified=2025-12-28 04:32:36.753143 | deleted=0 | name=Corto Maltese | sort_name=Maltese, Corto | disambiguation= | year_first_published=1967 | year_first_published_uncertain=0 | description=Corto Maltese è un marinaio avventuroso. Indossa una tunica scura e un berretto … | notes=Corto Maltese è un personaggio di finzione creato da [Hugo Pratt][1]. Appare per… | language_id=51 | universe_id=NULL
+  sample: id=2 | created=2021-02-13 16:31:10.333624 | modified=2021-10-03 18:23:04.711946 | deleted=0 | name=Corto Maltese | sort_name=Maltese, Corto | disambiguation= | year_first_published=1981 | year_first_published_uncertain=0 | description= | notes= | language_id=22 | universe_id=NULL
+
+## gcd_character_name_detail [table] — 89397 rows
+CREATE TABLE `gcd_character_name_detail` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `sort_name` varchar(255) NOT NULL
+,  `character_id` integer NOT NULL
+,  `is_official_name` integer NOT NULL
+,  CONSTRAINT `gcd_character_name_d_character_id_a0aa1b65_fk_gcd_chara` FOREIGN KEY (`character_id`) REFERENCES `gcd_character` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=4 | created=2021-02-14 17:27:28.618038 | modified=2026-01-23 04:01:40.038915 | deleted=0 | name=Quincy Magoo | sort_name=Magoo, Quincy | character_id=44 | is_official_name=0
+  sample: id=5 | created=2021-02-14 20:52:24.452562 | modified=2021-10-03 18:20:34.567400 | deleted=0 | name=Clara James Adams | sort_name=Adams, Clara James | character_id=56 | is_official_name=0
+
+## gcd_character_relation [table] — 36536 rows
+CREATE TABLE `gcd_character_relation` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `notes` longtext NOT NULL
+,  `from_character_id` integer NOT NULL
+,  `relation_type_id` integer NOT NULL
+,  `to_character_id` integer NOT NULL
+,  CONSTRAINT `gcd_character_relati_from_character_id_f632780f_fk_gcd_chara` FOREIGN KEY (`from_character_id`) REFERENCES `gcd_character` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_character_relati_relation_type_id_4cfe6f07_fk_gcd_chara` FOREIGN KEY (`relation_type_id`) REFERENCES `gcd_character_relation_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_character_relati_to_character_id_e08d735a_fk_gcd_chara` FOREIGN KEY (`to_character_id`) REFERENCES `gcd_character` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2021-02-13 22:34:17.041071 | modified=2021-02-13 22:34:17.041101 | notes= | from_character_id=1 | relation_type_id=1 | to_character_id=2
+  sample: id=4 | created=2021-02-15 01:59:47.167571 | modified=2021-02-15 03:08:30.371853 | notes= | from_character_id=20 | relation_type_id=2 | to_character_id=33
+
+## gcd_character_relation_type [table] — 6 rows
+CREATE TABLE `gcd_character_relation_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `type` varchar(50) NOT NULL
+,  `reverse_type` varchar(50) NOT NULL
+)
+  sample: id=1 | type=republished as | reverse_type=originally published as
+  sample: id=2 | type=alias of | reverse_type=secret identity of
+
+## gcd_character_role [table] — 6 rows
+CREATE TABLE `gcd_character_role` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(50) NOT NULL
+,  `sort_code` integer NOT NULL
+,  UNIQUE (`name`)
+,  UNIQUE (`sort_code`)
+)
+  sample: id=1 | name=antagonist | sort_code=1
+  sample: id=2 | name=cameo | sort_code=2
+
+## gcd_creator [table] — 113499 rows
+CREATE TABLE `gcd_creator` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `gcd_official_name` varchar(255) NOT NULL
+,  `whos_who` varchar(200) DEFAULT NULL
+,  `birth_country_uncertain` integer NOT NULL
+,  `birth_province` varchar(50) NOT NULL
+,  `birth_province_uncertain` integer NOT NULL
+,  `birth_city` varchar(200) NOT NULL
+,  `birth_city_uncertain` integer NOT NULL
+,  `death_country_uncertain` integer NOT NULL
+,  `death_province` varchar(50) NOT NULL
+,  `death_province_uncertain` integer NOT NULL
+,  `death_city` varchar(200) NOT NULL
+,  `death_city_uncertain` integer NOT NULL
+,  `bio` longtext NOT NULL
+,  `notes` longtext NOT NULL
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `birth_country_id` integer DEFAULT NULL
+,  `birth_date_id` integer DEFAULT NULL
+,  `death_country_id` integer
+,  `death_date_id` integer
+,  `sort_name` varchar(255) NOT NULL
+,  `disambiguation` varchar(255) NOT NULL
+,  CONSTRAINT `gcd_crea_birth_country_id_763042865119b661_fk_stddata_country_id` FOREIGN KEY (`birth_country_id`) REFERENCES `stddata_country` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_crea_death_country_id_564f5820f21e9ede_fk_stddata_country_id` FOREIGN KEY (`death_country_id`) REFERENCES `stddata_country` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_birth_date_id_78325325e7e05e56_fk_stddata_date_id` FOREIGN KEY (`birth_date_id`) REFERENCES `stddata_date` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_death_date_id_192a573e76c2f1cd_fk_stddata_date_id` FOREIGN KEY (`death_date_id`) REFERENCES `stddata_date` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | gcd_official_name=Will Eisner | whos_who=http://bailsprojects.com/bio.aspx?Name=EISNER%2C+WILL | birth_country_uncertain=0 | birth_province=New York | birth_province_uncertain=0 | birth_city=Brooklyn, New York City | birth_city_uncertain=0 | death_country_uncertain=0 | death_province=Florida | death_province_uncertain=0 | death_city=Lauderdale Lakes | death_city_uncertain=0 | bio=Will Eisner was an American comics artist and writer and who helped shape the mo… | notes=His archival repository is at Ohio State University, Billy Ireland Cartoon Libra… | created=2017-12-10 13:41:27 | modified=2026-03-06 13:22:50 | deleted=0 | birth_country_id=225 | birth_date_id=786075 | death_country_id=225 | death_date_id=786076 | sort_name=Eisner, Will | disambiguation=
+  sample: id=2 | gcd_official_name=Jack Kirby | whos_who=http://bailsprojects.com/bio.aspx?Name=KIRBY%2C+JACK | birth_country_uncertain=0 | birth_province=New York | birth_province_uncertain=0 | birth_city=Lower East Side, Manhattan, New York City | birth_city_uncertain=0 | death_country_uncertain=0 | death_province=California | death_province_uncertain=0 | death_city=Thousand Oaks | death_city_uncertain=0 | bio=American comic book artist, widely regarded as one of the medium's major innovat… | notes=A full list of works credited to Jack Kirby is at The Jack Kirby Digital Archive… | created=2017-12-10 13:41:27 | modified=2025-11-09 18:47:23 | deleted=0 | birth_country_id=225 | birth_date_id=735018 | death_country_id=225 | death_date_id=735019 | sort_name=Kirby, Jack | disambiguation=
+
+## gcd_creator_art_influence [table] — 4228 rows
+CREATE TABLE `gcd_creator_art_influence` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `influence_name` varchar(200) NOT NULL
+,  `notes` longtext NOT NULL
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `creator_id` integer NOT NULL
+,  `influence_link_id` integer
+,  CONSTRAINT `gcd_creator_art_infl_influence_link_id_7ffc0a72_fk_gcd_creat` FOREIGN KEY (`influence_link_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_art_influence_creator_id_af97901f_fk_gcd_creator_id` FOREIGN KEY (`creator_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | influence_name= | notes= | created=2017-12-10 18:49:08 | modified=2017-12-10 18:49:08 | deleted=0 | creator_id=498 | influence_link_id=1048
+  sample: id=2 | influence_name= | notes= | created=2017-12-10 18:54:44 | modified=2017-12-10 18:54:44 | deleted=0 | creator_id=498 | influence_link_id=9815
+
+## gcd_creator_degree [table] — 804 rows
+CREATE TABLE `gcd_creator_degree` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `degree_year` integer  DEFAULT NULL
+,  `degree_year_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `creator_id` integer NOT NULL
+,  `degree_id` integer NOT NULL
+,  `school_id` integer
+,  CONSTRAINT `gcd_creator_degree_creator_id_2d1a7e1b51ae365d_fk_gcd_creator_id` FOREIGN KEY (`creator_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_degree_degree_id_25975d216f588700_fk_gcd_degree_id` FOREIGN KEY (`degree_id`) REFERENCES `gcd_degree` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_degree_school_id_34e8b4f567e05b8c_fk_gcd_school_id` FOREIGN KEY (`school_id`) REFERENCES `gcd_school` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | degree_year=1930 | degree_year_uncertain=0 | notes=Bachelor of Fine Arts. | created=2017-12-17 08:39:02 | modified=2017-12-17 08:39:02 | deleted=0 | creator_id=9604 | degree_id=1 | school_id=357
+  sample: id=2 | degree_year=2013 | degree_year_uncertain=0 | notes=Recieved an MFA degree | created=2017-12-21 15:08:45 | modified=2017-12-21 15:08:45 | deleted=0 | creator_id=14413 | degree_id=5 | school_id=418
+
+## gcd_creator_membership [table] — 1008 rows
+CREATE TABLE `gcd_creator_membership` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `organization_name` varchar(200) NOT NULL
+,  `membership_year_began` integer  DEFAULT NULL
+,  `membership_year_began_uncertain` integer NOT NULL
+,  `membership_year_ended` integer  DEFAULT NULL
+,  `membership_year_ended_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `creator_id` integer NOT NULL
+,  `membership_type_id` integer
+,  CONSTRAINT `gc_membership_type_id_214046281e0da56a_fk_gcd_membership_type_id` FOREIGN KEY (`membership_type_id`) REFERENCES `gcd_membership_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_member_creator_id_4ed99850c0c56535_fk_gcd_creator_id` FOREIGN KEY (`creator_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | organization_name=Korean Cartoonist Association | membership_year_began=NULL | membership_year_began_uncertain=1 | membership_year_ended=NULL | membership_year_ended_uncertain=1 | notes= | created=2017-12-10 15:33:15 | modified=2017-12-10 15:47:27 | deleted=0 | creator_id=5618 | membership_type_id=1
+  sample: id=2 | organization_name=Korean Manhwa-ka Association | membership_year_began=NULL | membership_year_began_uncertain=0 | membership_year_ended=NULL | membership_year_ended_uncertain=0 | notes=Listed as "vice-chairman" in "Hyun Se Lee Biography" text piece in Nambul: War S… | created=2017-12-10 15:52:34 | modified=2017-12-10 15:52:34 | deleted=0 | creator_id=5618 | membership_type_id=1
+
+## gcd_creator_name_detail [table] — 159688 rows
+CREATE TABLE `gcd_creator_name_detail` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `creator_id` integer NOT NULL
+,  `type_id` integer
+,  `sort_name` varchar(255) NOT NULL
+,  `is_official_name` integer NOT NULL
+,  `in_script_id` integer NOT NULL
+,  `family_name` varchar(255) NOT NULL
+,  `given_name` varchar(255) NOT NULL
+,  CONSTRAINT `gcd_creator_name_d_creator_id_6fb7edba0f224837_fk_gcd_creator_id` FOREIGN KEY (`creator_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_name_det_in_script_id_b7560492_fk_stddata_s` FOREIGN KEY (`in_script_id`) REFERENCES `stddata_script` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_name_detail_type_id_cce05647_fk_gcd_name_type_id` FOREIGN KEY (`type_id`) REFERENCES `gcd_name_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | name=Will Eisner | created=2017-12-10 13:41:27 | modified=2026-03-06 13:22:50 | deleted=0 | creator_id=1 | type_id=11 | sort_name=Eisner, Will | is_official_name=1 | in_script_id=37 | family_name=Eisner | given_name=Will
+  sample: id=2 | name=Jack Kirby | created=2017-12-10 13:41:27 | modified=2025-11-09 18:47:23 | deleted=0 | creator_id=2 | type_id=2 | sort_name=Kirby, Jack | is_official_name=1 | in_script_id=37 | family_name=Kirby | given_name=Jack
+
+## gcd_creator_non_comic_work [table] — 3683 rows
+CREATE TABLE `gcd_creator_non_comic_work` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `publication_title` varchar(200) NOT NULL
+,  `employer_name` varchar(200) NOT NULL
+,  `work_title` varchar(255) NOT NULL
+,  `work_urls` longtext NOT NULL
+,  `notes` longtext NOT NULL
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `creator_id` integer NOT NULL
+,  `work_role_id` integer
+,  `work_type_id` integer NOT NULL
+,  CONSTRAINT `gcd__work_type_id_3bc189b3f6be8a38_fk_gcd_non_comic_work_type_id` FOREIGN KEY (`work_type_id`) REFERENCES `gcd_non_comic_work_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_c_work_role_id_98df94d341f6000_fk_gcd_non_comic_work_role_id` FOREIGN KEY (`work_role_id`) REFERENCES `gcd_non_comic_work_role` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_non_co_creator_id_2bf5eba03c4340b4_fk_gcd_creator_id` FOREIGN KEY (`creator_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | publication_title=Gulliver's Travels | employer_name=Fleischer Studios | work_title= | work_urls= | notes=Animation Background Artist | created=2017-12-11 06:15:49 | modified=2017-12-12 08:57:44 | deleted=0 | creator_id=4076 | work_role_id=6 | work_type_id=6
+  sample: id=2 | publication_title=unknown | employer_name=Hanna-Barbera | work_title= | work_urls= | notes=Storyboarder | created=2017-12-12 00:37:26 | modified=2017-12-12 00:37:26 | deleted=0 | creator_id=4014 | work_role_id=6 | work_type_id=4
+
+## gcd_creator_relation [table] — 5933 rows
+CREATE TABLE `gcd_creator_relation` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `notes` longtext NOT NULL
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `from_creator_id` integer NOT NULL
+,  `relation_type_id` integer NOT NULL
+,  `to_creator_id` integer NOT NULL
+,  CONSTRAINT `gcd_cr_relation_type_id_6b325352f7711cf6_fk_gcd_relation_type_id` FOREIGN KEY (`relation_type_id`) REFERENCES `gcd_relation_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_re_from_creator_id_12353b87e0ffa85_fk_gcd_creator_id` FOREIGN KEY (`from_creator_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_rel_to_creator_id_5893caf404626fdc_fk_gcd_creator_id` FOREIGN KEY (`to_creator_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | notes=Was owner, but also did writing, pencils and inks for the studio during 1937-193… | created=2017-12-10 15:58:48 | modified=2020-02-18 16:01:58 | deleted=0 | from_creator_id=1 | relation_type_id=2 | to_creator_id=3922
+  sample: id=2 | notes=Owner, but also did writing, pencils and inks for the studio during 1936-1939. | created=2017-12-10 16:40:45 | modified=2020-03-19 14:13:10 | deleted=0 | from_creator_id=12236 | relation_type_id=2 | to_creator_id=3922
+
+## gcd_creator_relation_creator_name [table] — 1034 rows
+CREATE TABLE `gcd_creator_relation_creator_name` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `creatorrelation_id` integer NOT NULL
+,  `creatornamedetail_id` integer NOT NULL
+,  UNIQUE (`creatorrelation_id`,`creatornamedetail_id`)
+,  CONSTRAINT `gcd_creator_relation_creatornamedetail_id_4675e7fc_fk_gcd_creat` FOREIGN KEY (`creatornamedetail_id`) REFERENCES `gcd_creator_name_detail` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_relation_creatorrelation_id_d48c32dc_fk_gcd_creat` FOREIGN KEY (`creatorrelation_id`) REFERENCES `gcd_creator_relation` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | creatorrelation_id=120 | creatornamedetail_id=42015
+  sample: id=2 | creatorrelation_id=1304 | creatornamedetail_id=42330
+
+## gcd_creator_school [table] — 3297 rows
+CREATE TABLE `gcd_creator_school` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `school_year_began` integer  DEFAULT NULL
+,  `school_year_began_uncertain` integer NOT NULL
+,  `school_year_ended` integer  DEFAULT NULL
+,  `school_year_ended_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL
+,  `creator_id` integer NOT NULL
+,  `school_id` integer NOT NULL
+,  CONSTRAINT `gcd_creator_school_creator_id_2525d2f8e697f937_fk_gcd_creator_id` FOREIGN KEY (`creator_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_creator_school_school_id_532eb68322363260_fk_gcd_school_id` FOREIGN KEY (`school_id`) REFERENCES `gcd_school` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | school_year_began=NULL | school_year_began_uncertain=0 | school_year_ended=NULL | school_year_ended_uncertain=0 | notes= | created=2017-12-10 19:01:21 | modified=2017-12-10 19:01:21 | deleted=0 | creator_id=498 | school_id=636
+  sample: id=2 | school_year_began=NULL | school_year_began_uncertain=0 | school_year_ended=NULL | school_year_ended_uncertain=0 | notes= | created=2017-12-10 19:20:25 | modified=2017-12-10 19:20:25 | deleted=0 | creator_id=9070 | school_id=637
+
+## gcd_creator_signature [table] — 33750 rows
+CREATE TABLE `gcd_creator_signature` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `notes` longtext NOT NULL
+,  `generic` integer NOT NULL
+,  `creator_id` integer NOT NULL
+,  CONSTRAINT `gcd_creator_signature_creator_id_063b6789_fk_gcd_creator_id` FOREIGN KEY (`creator_id`) REFERENCES `gcd_creator` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=3 | created=2020-08-06 08:39:38.092551 | modified=2020-08-06 08:39:38.092568 | deleted=0 | name=Jason Aaron | notes= | generic=1 | creator_id=15847
+  sample: id=4 | created=2020-08-06 08:39:38.151814 | modified=2020-08-06 08:39:38.151833 | deleted=0 | name=Håkon Aasnes | notes= | generic=1 | creator_id=5202
+
+## gcd_credit_type [table] — 14 rows
+CREATE TABLE `gcd_credit_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(50) NOT NULL
+,  `sort_code` integer NOT NULL
+,  UNIQUE (`name`)
+,  UNIQUE (`sort_code`)
+)
+  sample: id=1 | name=script | sort_code=1
+  sample: id=2 | name=pencils | sort_code=10
+
+## gcd_degree [table] — 9 rows
+CREATE TABLE `gcd_degree` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `degree_name` varchar(200) NOT NULL
+)
+  sample: id=1 | degree_name=B.A.
+  sample: id=2 | degree_name=B.A., Hons
+
+## gcd_feature [table] — 50016 rows
+CREATE TABLE `gcd_feature` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `sort_name` varchar(255) NOT NULL
+,  `genre` varchar(255) NOT NULL
+,  `year_first_published` integer DEFAULT NULL
+,  `year_first_published_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `feature_type_id` integer NOT NULL
+,  `language_id` integer NOT NULL
+,  `disambiguation` varchar(255) NOT NULL
+,  `description` longtext NOT NULL
+,  CONSTRAINT `gcd_feature_feature_type_id_0bd38e4d_fk_gcd_feature_type_id` FOREIGN KEY (`feature_type_id`) REFERENCES `gcd_feature_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_feature_language_id_f6ca9801_fk_stddata_language_id` FOREIGN KEY (`language_id`) REFERENCES `stddata_language` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2019-08-25 08:46:50.533716 | modified=2026-08-15 11:52:38.641801 | deleted=0 | name=Corto Maltese | sort_name=Corto Maltese | genre=adventure | year_first_published=1967 | year_first_published_uncertain=0 | notes=Corto Maltese was created by the Italian comic book artist Hugo Pratt. It shows … | feature_type_id=1 | language_id=51 | disambiguation= | description=
+  sample: id=2 | created=2019-08-25 09:42:33.767920 | modified=2026-08-15 13:53:15.805045 | deleted=0 | name=Morgan Kane | sort_name=Morgan Kane | genre=western-frontier | year_first_published=1974 | year_first_published_uncertain=0 | notes= | feature_type_id=1 | language_id=83 | disambiguation= | description=
+
+## gcd_feature_detail_name [table] — 50219 rows
+CREATE TABLE `gcd_feature_detail_name` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `sort_name` varchar(255) NOT NULL
+,  `is_official_name` integer NOT NULL
+,  `feature_id` integer NOT NULL
+,  CONSTRAINT `gcd_feature_detail_name_feature_id_3d03c5bd_fk_gcd_feature_id` FOREIGN KEY (`feature_id`) REFERENCES `gcd_feature` (`id`)
+)
+  sample: id=1 | created=2026-08-15 10:39:34.770137 | modified=2026-08-15 10:39:34.770158 | deleted=0 | name="Ace" High | sort_name="Ace" High | is_official_name=1 | feature_id=44023
+  sample: id=2 | created=2026-08-15 10:39:35.129696 | modified=2026-08-15 10:39:35.129721 | deleted=0 | name="Apache" Arrowheads | sort_name="Apache" Arrowheads | is_official_name=1 | feature_id=34536
+
+## gcd_feature_logo [table] — 8461 rows
+CREATE TABLE `gcd_feature_logo` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `sort_name` varchar(255) NOT NULL
+,  `year_began` integer DEFAULT NULL
+,  `year_ended` integer DEFAULT NULL
+,  `year_began_uncertain` integer NOT NULL
+,  `year_ended_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `generic` integer NOT NULL
+)
+  sample: id=1 | created=2019-08-25 20:55:47.334984 | modified=2019-08-25 20:55:47.335011 | deleted=0 | name=Archie and Me | sort_name=Archie and Me | year_began=NULL | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | notes= | generic=0
+  sample: id=3 | created=2019-08-25 20:56:02.078550 | modified=2019-08-26 19:30:12.175698 | deleted=0 | name=Archie & Friends | sort_name=Archie & Friends | year_began=1992 | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | notes= | generic=0
+
+## gcd_feature_logo_2_feature_name [table] — 8701 rows
+CREATE TABLE `gcd_feature_logo_2_feature_name` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `featurelogo_id` integer NOT NULL
+,  `featurenamedetail_id` integer NOT NULL
+,  UNIQUE (`featurelogo_id`,`featurenamedetail_id`)
+,  CONSTRAINT `gcd_feature_logo_2_f_featurelogo_id_59d9e509_fk_gcd_featu` FOREIGN KEY (`featurelogo_id`) REFERENCES `gcd_feature_logo` (`id`)
+,  CONSTRAINT `gcd_feature_logo_2_f_featurenamedetail_id_bf720a59_fk_gcd_featu` FOREIGN KEY (`featurenamedetail_id`) REFERENCES `gcd_feature_detail_name` (`id`)
+)
+  sample: id=1 | featurelogo_id=6706 | featurenamedetail_id=7299
+  sample: id=2 | featurelogo_id=6178 | featurenamedetail_id=8124
+
+## gcd_feature_relation [table] — 13484 rows
+CREATE TABLE `gcd_feature_relation` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `notes` longtext NOT NULL
+,  `from_feature_id` integer NOT NULL
+,  `relation_type_id` integer NOT NULL
+,  `to_feature_id` integer NOT NULL
+,  CONSTRAINT `gcd_feature_relation_from_feature_id_25e36fdf_fk_gcd_feature_id` FOREIGN KEY (`from_feature_id`) REFERENCES `gcd_feature` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_feature_relation_relation_type_id_09ba4ac7_fk_gcd_featu` FOREIGN KEY (`relation_type_id`) REFERENCES `gcd_feature_relation_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_feature_relation_to_feature_id_e5a20bdf_fk_gcd_feature_id` FOREIGN KEY (`to_feature_id`) REFERENCES `gcd_feature` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2019-08-25 14:27:10.874576 | modified=2019-08-25 14:27:10.874600 | notes= | from_feature_id=4 | relation_type_id=1 | to_feature_id=5
+  sample: id=2 | created=2019-09-04 02:17:45.186698 | modified=2019-09-04 02:17:45.186722 | notes= | from_feature_id=13 | relation_type_id=1 | to_feature_id=87
+
+## gcd_feature_relation_type [table] — 1 rows
+CREATE TABLE `gcd_feature_relation_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `description` varchar(255) NOT NULL
+,  `reverse_description` varchar(255) NOT NULL
+)
+  sample: id=1 | name=translated as | description=as feature in other language | reverse_description=as feature in original language
+
+## gcd_feature_type [table] — 4 rows
+CREATE TABLE `gcd_feature_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+)
+  sample: id=1 | name=story
+  sample: id=2 | name=letter column
+
+## gcd_group [table] — 3228 rows
+CREATE TABLE `gcd_group` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `sort_name` varchar(255) NOT NULL
+,  `disambiguation` varchar(255) NOT NULL
+,  `year_first_published` integer DEFAULT NULL
+,  `year_first_published_uncertain` integer NOT NULL
+,  `description` longtext NOT NULL
+,  `notes` longtext NOT NULL
+,  `language_id` integer NOT NULL
+,  `universe_id` integer DEFAULT NULL
+,  CONSTRAINT `gcd_group_language_id_e0935a36_fk_stddata_language_id` FOREIGN KEY (`language_id`) REFERENCES `stddata_language` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_group_universe_id_e32b55ff_fk_gcd_universe_id` FOREIGN KEY (`universe_id`) REFERENCES `gcd_universe` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2021-02-14 04:58:48.292931 | modified=2026-04-21 14:41:34.409530 | deleted=0 | name=X-Men | sort_name=X-Men | disambiguation= | year_first_published=1963 | year_first_published_uncertain=0 | description= | notes=Created by Stan Lee and Jack Kirby, first Appearance in X-Men (Marvel, 1963 seri… | language_id=25 | universe_id=NULL
+  sample: id=2 | created=2021-02-14 16:06:58.450140 | modified=2025-05-08 06:53:18.076841 | deleted=0 | name=Justice League of America | sort_name=Justice League of America | disambiguation= | year_first_published=1960 | year_first_published_uncertain=0 | description=Appellaxian warriors were sent to Earth to see who could conquer it first, in or… | notes=Created by [Gardner Fox][4598] and [Mike Sekowsky][9558]. - The Justice League o… | language_id=25 | universe_id=NULL
+
+## gcd_group_character [table] — 67053 rows
+CREATE TABLE `gcd_group_character` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `story_id` integer NOT NULL
+,  `universe_id` integer DEFAULT NULL
+,  `group_name_id` integer NOT NULL
+,  CONSTRAINT `gcd_group_character_group_name_id_a01b83b2_fk_gcd_group` FOREIGN KEY (`group_name_id`) REFERENCES `gcd_group_name_detail` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_group_character_story_id_4aedac36_fk_gcd_story_id` FOREIGN KEY (`story_id`) REFERENCES `gcd_story` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_group_character_universe_id_34fdd9e7_fk_gcd_universe_id` FOREIGN KEY (`universe_id`) REFERENCES `gcd_universe` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2024-01-02 09:19:08.208247 | modified=2024-05-09 16:47:15.752209 | deleted=0 | notes= | story_id=3733027 | universe_id=1 | group_name_id=883
+  sample: id=2 | created=2024-01-02 09:19:11.007153 | modified=2026-02-08 01:36:04.379477 | deleted=0 | notes= | story_id=257920 | universe_id=1 | group_name_id=883
+
+## gcd_group_membership [table] — 22473 rows
+CREATE TABLE `gcd_group_membership` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `year_joined` integer  DEFAULT NULL
+,  `year_joined_uncertain` integer NOT NULL
+,  `year_left` integer  DEFAULT NULL
+,  `year_left_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `character_id` integer NOT NULL
+,  `group_id` integer NOT NULL
+,  `membership_type_id` integer NOT NULL
+,  CONSTRAINT `gcd_group_membership_character_id_ce34b6e6_fk_gcd_character_id` FOREIGN KEY (`character_id`) REFERENCES `gcd_character` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_group_membership_group_id_ee6c8c22_fk_gcd_group_id` FOREIGN KEY (`group_id`) REFERENCES `gcd_group` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_group_membership_membership_type_id_32854b66_fk_gcd_group` FOREIGN KEY (`membership_type_id`) REFERENCES `gcd_group_membership_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2021-02-15 09:53:14.894065 | modified=2021-02-15 09:53:14.894099 | year_joined=1977 | year_joined_uncertain=0 | year_left=NULL | year_left_uncertain=0 | notes= | character_id=65 | group_id=6 | membership_type_id=1
+  sample: id=2 | created=2021-02-15 14:22:27.195951 | modified=2021-02-15 14:22:27.195981 | year_joined=1977 | year_joined_uncertain=0 | year_left=NULL | year_left_uncertain=0 | notes= | character_id=194 | group_id=6 | membership_type_id=1
+
+## gcd_group_membership_type [table] — 3 rows
+CREATE TABLE `gcd_group_membership_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `type` varchar(50) NOT NULL
+,  `reverse_type` varchar(50) NOT NULL
+)
+  sample: id=1 | type=formal | reverse_type=
+  sample: id=2 | type=associated | reverse_type=
+
+## gcd_group_name_detail [table] — 3619 rows
+CREATE TABLE `gcd_group_name_detail` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `sort_name` varchar(255) NOT NULL
+,  `is_official_name` integer NOT NULL
+,  `group_id` integer NOT NULL
+,  CONSTRAINT `gcd_group_name_detail_group_id_f6a401d7_fk_gcd_group_id` FOREIGN KEY (`group_id`) REFERENCES `gcd_group` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2024-04-07 08:06:27.095733 | modified=2024-04-07 08:06:27.095743 | deleted=0 | name=The 198 | sort_name=198, The | is_official_name=1 | group_id=1172
+  sample: id=2 | created=2024-04-07 08:06:27.116397 | modified=2024-04-07 08:06:27.116407 | deleted=0 | name=De 3 biggetjes | sort_name=3 biggetjes, De | is_official_name=1 | group_id=194
+
+## gcd_group_relation [table] — 913 rows
+CREATE TABLE `gcd_group_relation` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `notes` longtext NOT NULL
+,  `from_group_id` integer NOT NULL
+,  `relation_type_id` integer NOT NULL
+,  `to_group_id` integer NOT NULL
+,  CONSTRAINT `gcd_group_relation_from_group_id_e865b8f6_fk_gcd_group_id` FOREIGN KEY (`from_group_id`) REFERENCES `gcd_group` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_group_relation_relation_type_id_ab30bd40_fk_gcd_group` FOREIGN KEY (`relation_type_id`) REFERENCES `gcd_group_relation_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_group_relation_to_group_id_454ce47f_fk_gcd_group_id` FOREIGN KEY (`to_group_id`) REFERENCES `gcd_group` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2021-02-15 03:10:40.327637 | modified=2021-02-15 03:10:40.327670 | notes= | from_group_id=4 | relation_type_id=1 | to_group_id=5
+  sample: id=2 | created=2021-02-19 23:45:52.041274 | modified=2021-02-19 23:45:52.041314 | notes= | from_group_id=14 | relation_type_id=1 | to_group_id=15
+
+## gcd_group_relation_type [table] — 5 rows
+CREATE TABLE `gcd_group_relation_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `type` varchar(50) NOT NULL
+,  `reverse_type` varchar(50) NOT NULL
+)
+  sample: id=1 | type=republished as | reverse_type=originally published as
+  sample: id=2 | type=alternate universe version of | reverse_type=alternate universe version of
+
+## gcd_indicia_printer [table] — 2842 rows
+CREATE TABLE `gcd_indicia_printer` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `year_began` integer DEFAULT NULL
+,  `year_ended` integer DEFAULT NULL
+,  `year_began_uncertain` integer NOT NULL
+,  `year_ended_uncertain` integer NOT NULL
+,  `year_overall_began` integer DEFAULT NULL
+,  `year_overall_ended` integer DEFAULT NULL
+,  `year_overall_began_uncertain` integer NOT NULL
+,  `year_overall_ended_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `url` varchar(255) NOT NULL
+,  `issue_count` integer NOT NULL
+,  `country_id` integer NOT NULL
+,  `parent_id` integer NOT NULL
+,  CONSTRAINT `gcd_indicia_printer_country_id_7721a445_fk_stddata_country_id` FOREIGN KEY (`country_id`) REFERENCES `stddata_country` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_indicia_printer_parent_id_530af9b7_fk_gcd_printer_id` FOREIGN KEY (`parent_id`) REFERENCES `gcd_printer` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2020-08-07 14:46:46.682801 | modified=2026-09-14 14:57:45.068109 | deleted=0 | name=Egmont Printing Service | year_began=NULL | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_ended=NULL | year_overall_began_uncertain=0 | year_overall_ended_uncertain=0 | notes= | url= | issue_count=2222 | country_id=160 | parent_id=1
+  sample: id=2 | created=2020-08-07 14:47:21.523270 | modified=2026-08-04 03:37:47.304282 | deleted=0 | name=Frogner Trykkerier A/S | year_began=NULL | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_ended=NULL | year_overall_began_uncertain=0 | year_overall_ended_uncertain=0 | notes= | url= | issue_count=226 | country_id=160 | parent_id=2
+
+## gcd_indicia_publisher [table] — 10352 rows
+CREATE TABLE `gcd_indicia_publisher` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `parent_id` integer NOT NULL
+,  `country_id` integer NOT NULL
+,  `year_began` integer DEFAULT NULL
+,  `year_ended` integer DEFAULT NULL
+,  `is_surrogate` integer NOT NULL DEFAULT '0'
+,  `notes` longtext NOT NULL
+,  `url` varchar(255) NOT NULL
+,  `issue_count` integer NOT NULL DEFAULT '0'
+,  `created` datetime NOT NULL
+,  `modified` datetime NOT NULL
+,  `deleted` integer NOT NULL DEFAULT '0'
+,  `year_began_uncertain` integer NOT NULL DEFAULT '0'
+,  `year_ended_uncertain` integer NOT NULL DEFAULT '0'
+,  `year_overall_began` integer DEFAULT NULL
+,  `year_overall_began_uncertain` integer NOT NULL
+,  `year_overall_ended` integer DEFAULT NULL
+,  `year_overall_ended_uncertain` integer NOT NULL
+,  CONSTRAINT `gcd_indicia_publisher_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `gcd_publisher` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_indicia_publisher_ibfk_2` FOREIGN KEY (`country_id`) REFERENCES `stddata_country` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=2 | name=DC Comics | parent_id=54 | country_id=225 | year_began=1987 | year_ended=NULL | is_surrogate=0 | notes=Previously "DC Comics, Inc." | url=http://www.dccomics.com/ | issue_count=35890 | created=2009-12-07 00:00:00 | modified=2026-09-15 02:07:51 | deleted=0 | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_began_uncertain=0 | year_overall_ended=NULL | year_overall_ended_uncertain=0
+  sample: id=3 | name=DC Comics Inc. | parent_id=54 | country_id=225 | year_began=1977 | year_ended=1993 | is_surrogate=0 | notes=Previously "National Periodical Publications, Inc." and followed by just "DC Com… | url=http://www.dccomics.com/ | issue_count=7803 | created=2009-12-07 00:00:00 | modified=2026-06-28 21:35:42 | deleted=0 | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_began_uncertain=0 | year_overall_ended=NULL | year_overall_ended_uncertain=0
+
+## gcd_issue [table] — 2615672 rows
+CREATE TABLE `gcd_issue` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `number` varchar(50) NOT NULL
+,  `volume` varchar(50) NOT NULL DEFAULT ''
+,  `no_volume` integer NOT NULL DEFAULT '0'
+,  `display_volume_with_number` integer NOT NULL DEFAULT '0'
+,  `series_id` integer NOT NULL
+,  `indicia_publisher_id` integer DEFAULT NULL
+,  `indicia_pub_not_printed` integer NOT NULL
+,  `no_brand` integer NOT NULL
+,  `publication_date` varchar(255) NOT NULL
+,  `key_date` varchar(10) NOT NULL
+,  `sort_code` integer NOT NULL
+,  `price` varchar(255) NOT NULL
+,  `page_count` decimal(10,3) DEFAULT NULL
+,  `page_count_uncertain` integer NOT NULL DEFAULT '0'
+,  `indicia_frequency` varchar(255) NOT NULL DEFAULT ''
+,  `no_indicia_frequency` integer NOT NULL DEFAULT '0'
+,  `editing` longtext NOT NULL
+,  `no_editing` integer NOT NULL DEFAULT '0'
+,  `notes` longtext NOT NULL
+,  `created` datetime NOT NULL DEFAULT '1901-01-01 00:00:00'
+,  `modified` datetime NOT NULL DEFAULT '1901-01-01 00:00:00'
+,  `deleted` integer NOT NULL DEFAULT '0'
+,  `is_indexed` integer NOT NULL DEFAULT '0'
+,  `isbn` varchar(32) NOT NULL DEFAULT ''
+,  `valid_isbn` varchar(13) NOT NULL DEFAULT ''
+,  `no_isbn` integer NOT NULL DEFAULT '0'
+,  `variant_of_id` integer DEFAULT NULL
+,  `variant_name` varchar(255) NOT NULL DEFAULT ''
+,  `barcode` varchar(38) NOT NULL DEFAULT ''
+,  `no_barcode` integer NOT NULL DEFAULT '0'
+,  `title` varchar(255) NOT NULL DEFAULT ''
+,  `no_title` integer NOT NULL DEFAULT '0'
+,  `on_sale_date` varchar(10) NOT NULL
+,  `on_sale_date_uncertain` integer NOT NULL DEFAULT '0'
+,  `rating` varchar(255) NOT NULL
+,  `no_rating` integer NOT NULL
+,  `volume_not_printed` integer NOT NULL
+,  `indicia_printer_not_printed` integer NOT NULL
+,  `variant_cover_status` integer NOT NULL
+,  `indicia_printer_sourced_by` varchar(255) NOT NULL
+,  UNIQUE (`series_id`,`sort_code`)
+,  CONSTRAINT `gcd_issue_ibfk_1` FOREIGN KEY (`series_id`) REFERENCES `gcd_series` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_issue_ibfk_2` FOREIGN KEY (`indicia_publisher_id`) REFERENCES `gcd_indicia_publisher` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_issue_ibfk_4` FOREIGN KEY (`variant_of_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | number=[nn] | volume= | no_volume=1 | display_volume_with_number=0 | series_id=1 | indicia_publisher_id=NULL | indicia_pub_not_printed=0 | no_brand=0 | publication_date=1867 | key_date=1867-00-00 | sort_code=1 | price=[none] | page_count=96 | page_count_uncertain=0 | indicia_frequency= | no_indicia_frequency=1 | editing= | no_editing=0 | notes=Dated 1867, but some copies were released for Christmas 1866 (including the copy… | created=2001-04-15 00:00:00 | modified=2025-07-09 03:38:25 | deleted=0 | is_indexed=10 | isbn= | valid_isbn= | no_isbn=1 | variant_of_id=NULL | variant_name= | barcode= | no_barcode=1 | title= | no_title=0 | on_sale_date=1866-12 | on_sale_date_uncertain=0 | rating= | no_rating=0 | volume_not_printed=0 | indicia_printer_not_printed=0 | variant_cover_status=3 | indicia_printer_sourced_by=
+  sample: id=2 | number=[nn] | volume= | no_volume=0 | display_volume_with_number=0 | series_id=2 | indicia_publisher_id=NULL | indicia_pub_not_printed=0 | no_brand=0 | publication_date=1868 | key_date=1868-00-00 | sort_code=2 | price=[none] | page_count=134 | page_count_uncertain=0 | indicia_frequency= | no_indicia_frequency=0 | editing=? | no_editing=0 | notes=Auction at cqout.com in August 2007 states "Described and ornamented by Harry Ro… | created=2001-04-15 00:00:00 | modified=2025-05-01 16:10:27 | deleted=0 | is_indexed=10 | isbn= | valid_isbn= | no_isbn=1 | variant_of_id=NULL | variant_name= | barcode= | no_barcode=1 | title= | no_title=0 | on_sale_date= | on_sale_date_uncertain=0 | rating= | no_rating=0 | volume_not_printed=0 | indicia_printer_not_printed=0 | variant_cover_status=3 | indicia_printer_sourced_by=
+
+## gcd_issue_brand_emblem [table] — 859545 rows
+CREATE TABLE `gcd_issue_brand_emblem` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `issue_id` integer NOT NULL
+,  `brand_id` integer NOT NULL
+,  UNIQUE (`issue_id`,`brand_id`)
+,  CONSTRAINT `gcd_issue_brand_emblem_brand_id_4b9b4e20_fk_gcd_brand_id` FOREIGN KEY (`brand_id`) REFERENCES `gcd_brand` (`id`)
+,  CONSTRAINT `gcd_issue_brand_emblem_issue_id_c2a07a32_fk_gcd_issue_id` FOREIGN KEY (`issue_id`) REFERENCES `gcd_issue` (`id`)
+)
+  sample: id=1 | issue_id=127538 | brand_id=2714
+  sample: id=2 | issue_id=127539 | brand_id=2714
+
+## gcd_issue_credit [table] — 1335817 rows
+CREATE TABLE `gcd_issue_credit` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `is_credited` integer NOT NULL
+,  `uncertain` integer NOT NULL
+,  `credited_as` varchar(255) NOT NULL
+,  `credit_name` varchar(255) NOT NULL
+,  `creator_id` integer NOT NULL
+,  `credit_type_id` integer NOT NULL
+,  `issue_id` integer NOT NULL
+,  `is_sourced` integer NOT NULL
+,  `sourced_by` varchar(255) NOT NULL
+,  CONSTRAINT `gcd_issue_credit_creator_id_d23239af_fk_gcd_creat` FOREIGN KEY (`creator_id`) REFERENCES `gcd_creator_name_detail` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_issue_credit_credit_type_id_85428160_fk_gcd_credit_type_id` FOREIGN KEY (`credit_type_id`) REFERENCES `gcd_credit_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_issue_credit_issue_id_928f51d6_fk_gcd_issue_id` FOREIGN KEY (`issue_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2020-08-06 12:05:34.875910 | modified=2026-01-02 01:37:53.897664 | deleted=0 | is_credited=0 | uncertain=0 | credited_as= | credit_name=editor | creator_id=14379 | credit_type_id=6 | issue_id=714257 | is_sourced=0 | sourced_by=
+  sample: id=2 | created=2020-08-06 12:05:34.885139 | modified=2026-01-02 01:37:53.904649 | deleted=0 | is_credited=0 | uncertain=0 | credited_as= | credit_name=editor-chefe | creator_id=5386 | credit_type_id=6 | issue_id=714257 | is_sourced=0 | sourced_by=
+
+## gcd_issue_indicia_printer [table] — 192626 rows
+CREATE TABLE `gcd_issue_indicia_printer` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `issue_id` integer NOT NULL
+,  `indiciaprinter_id` integer NOT NULL
+,  UNIQUE (`issue_id`,`indiciaprinter_id`)
+,  CONSTRAINT `gcd_issue_indicia_pr_indiciaprinter_id_c0f3b842_fk_gcd_indic` FOREIGN KEY (`indiciaprinter_id`) REFERENCES `gcd_indicia_printer` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_issue_indicia_printer_issue_id_2965892e_fk_gcd_issue_id` FOREIGN KEY (`issue_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | issue_id=347463 | indiciaprinter_id=4
+  sample: id=2 | issue_id=1846709 | indiciaprinter_id=15
+
+## gcd_membership_type [table] — 3 rows
+CREATE TABLE `gcd_membership_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `type` varchar(100) NOT NULL
+)
+  sample: id=1 | type=member
+  sample: id=2 | type=president
+
+## gcd_multiverse [table] — 4 rows
+CREATE TABLE `gcd_multiverse` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `mainstream_id` integer NOT NULL
+,  CONSTRAINT `gcd_multiverse_mainstream_id_9a3651b8_fk_gcd_universe_id` FOREIGN KEY (`mainstream_id`) REFERENCES `gcd_universe` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2024-01-02 08:51:23.433414 | modified=2024-01-02 08:51:23.433433 | deleted=0 | name=DC | mainstream_id=1
+  sample: id=2 | created=2024-01-02 08:51:33.655096 | modified=2024-01-02 08:51:33.655114 | deleted=0 | name=Marvel | mainstream_id=2
+
+## gcd_name_type [table] — 14 rows
+CREATE TABLE `gcd_name_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `description` longtext NOT NULL
+,  `type` varchar(50) NOT NULL
+)
+  sample: id=1 | description= | type=GCD Official (type is deprecated)
+  sample: id=2 | description= | type=Changed Name
+
+## gcd_non_comic_work_role [table] — 11 rows
+CREATE TABLE `gcd_non_comic_work_role` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `role_name` varchar(200) NOT NULL
+)
+  sample: id=1 | role_name=owner
+  sample: id=2 | role_name=employee
+
+## gcd_non_comic_work_type [table] — 12 rows
+CREATE TABLE `gcd_non_comic_work_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `type` varchar(100) NOT NULL
+)
+  sample: id=1 | type=book
+  sample: id=2 | type=magazine
+
+## gcd_non_comic_work_year [table] — 6519 rows
+CREATE TABLE `gcd_non_comic_work_year` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `work_year` integer  DEFAULT NULL
+,  `work_year_uncertain` integer NOT NULL
+,  `non_comic_work_id` integer NOT NULL
+,  CONSTRAINT `D0189e80e31281a6ea56ca3b1b0c7cde` FOREIGN KEY (`non_comic_work_id`) REFERENCES `gcd_creator_non_comic_work` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | work_year=1939 | work_year_uncertain=0 | non_comic_work_id=1
+  sample: id=2 | work_year=1940 | work_year_uncertain=0 | non_comic_work_id=3
+
+## gcd_printer [table] — 1381 rows
+CREATE TABLE `gcd_printer` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `year_began` integer DEFAULT NULL
+,  `year_ended` integer DEFAULT NULL
+,  `year_began_uncertain` integer NOT NULL
+,  `year_ended_uncertain` integer NOT NULL
+,  `year_overall_began` integer DEFAULT NULL
+,  `year_overall_ended` integer DEFAULT NULL
+,  `year_overall_began_uncertain` integer NOT NULL
+,  `year_overall_ended_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `url` varchar(255) NOT NULL
+,  `indicia_printer_count` integer NOT NULL
+,  `issue_count` integer NOT NULL
+,  `country_id` integer NOT NULL
+,  CONSTRAINT `gcd_printer_country_id_889421fa_fk_stddata_country_id` FOREIGN KEY (`country_id`) REFERENCES `stddata_country` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2020-08-07 13:00:51.633767 | modified=2026-09-14 14:57:45.066933 | deleted=0 | name=Egmont | year_began=NULL | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_ended=NULL | year_overall_began_uncertain=0 | year_overall_ended_uncertain=0 | notes= | url= | indicia_printer_count=0 | issue_count=3002 | country_id=56
+  sample: id=2 | created=2020-08-07 13:01:01.542293 | modified=2026-08-04 03:37:47.303413 | deleted=0 | name=Frogner Trykkerier A/S | year_began=NULL | year_ended=NULL | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_ended=NULL | year_overall_began_uncertain=0 | year_overall_ended_uncertain=0 | notes= | url= | indicia_printer_count=0 | issue_count=236 | country_id=160
+
+## gcd_publisher [table] — 17698 rows
+CREATE TABLE `gcd_publisher` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `country_id` integer NOT NULL
+,  `year_began` integer DEFAULT NULL
+,  `year_ended` integer DEFAULT NULL
+,  `notes` longtext NOT NULL
+,  `url` varchar(255) NOT NULL
+,  `brand_count` integer NOT NULL DEFAULT '0'
+,  `indicia_publisher_count` integer NOT NULL DEFAULT '0'
+,  `series_count` integer NOT NULL DEFAULT '0'
+,  `created` datetime NOT NULL DEFAULT '1901-01-01 00:00:00'
+,  `modified` datetime NOT NULL DEFAULT '1901-01-01 00:00:00'
+,  `issue_count` integer NOT NULL DEFAULT '0'
+,  `deleted` integer NOT NULL DEFAULT '0'
+,  `year_began_uncertain` integer NOT NULL DEFAULT '0'
+,  `year_ended_uncertain` integer NOT NULL DEFAULT '0'
+,  `year_overall_began` integer DEFAULT NULL
+,  `year_overall_began_uncertain` integer NOT NULL
+,  `year_overall_ended` integer DEFAULT NULL
+,  `year_overall_ended_uncertain` integer NOT NULL
+,  CONSTRAINT `gcd_publisher_ibfk_1` FOREIGN KEY (`country_id`) REFERENCES `stddata_country` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=2 | name=Sampson Low | country_id=75 | year_began=1848 | year_ended=1964 | notes=Names of the company: - Sampson Low, Son & Co.: Established in 1848 by Sampson L… | url= | brand_count=0 | indicia_publisher_count=0 | series_count=7 | created=1999-06-15 00:00:00 | modified=2017-12-31 18:53:49 | issue_count=9 | deleted=0 | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_began_uncertain=0 | year_overall_ended=NULL | year_overall_ended_uncertain=0
+  sample: id=3 | name=C.A. Jackson & Co.; Donaldson Brothers | country_id=225 | year_began=1870 | year_ended=NULL | notes= | url= | brand_count=0 | indicia_publisher_count=0 | series_count=2 | created=1999-06-15 00:00:00 | modified=2015-05-26 19:59:14 | issue_count=2 | deleted=0 | year_began_uncertain=0 | year_ended_uncertain=0 | year_overall_began=NULL | year_overall_began_uncertain=0 | year_overall_ended=NULL | year_overall_ended_uncertain=0
+
+## gcd_received_award [table] — 14657 rows
+CREATE TABLE `gcd_received_award` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `object_id` integer  DEFAULT NULL
+,  `award_name` varchar(255) NOT NULL
+,  `no_award_name` integer NOT NULL
+,  `award_year` integer  DEFAULT NULL
+,  `award_year_uncertain` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `award_id` integer DEFAULT NULL
+,  `content_type_id` integer DEFAULT NULL
+,  CONSTRAINT `gcd_received_award_award_id_a1daee53_fk_gcd_award_id` FOREIGN KEY (`award_id`) REFERENCES `gcd_award` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_received_award_content_type_id_76c10020_fk_django_co` FOREIGN KEY (`content_type_id`) REFERENCES `django_content_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2019-01-19 16:16:37.962920 | modified=2019-01-19 16:16:37.962934 | deleted=0 | object_id=9070 | award_name=Bester deutschsprachiger Comic-Künstler | no_award_name=0 | award_year=1986 | award_year_uncertain=0 | notes= | award_id=115 | content_type_id=85
+  sample: id=2 | created=2019-01-19 16:16:40.102319 | modified=2019-01-19 16:16:40.102332 | deleted=0 | object_id=9070 | award_name=Comic Illustrators and Authors | no_award_name=0 | award_year=1990 | award_year_uncertain=0 | notes=Won | award_id=198 | content_type_id=85
+
+## gcd_relation_type [table] — 9 rows
+CREATE TABLE `gcd_relation_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `type` varchar(50) NOT NULL
+,  `reverse_type` varchar(50) NOT NULL
+)
+  sample: id=1 | type=Similar Name | reverse_type=Similar Name
+  sample: id=2 | type=Owner | reverse_type=Owned by
+
+## gcd_reprint [table] — 1563120 rows
+CREATE TABLE `gcd_reprint` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `origin_id` integer DEFAULT NULL
+,  `target_id` integer DEFAULT NULL
+,  `notes` longtext NOT NULL
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `origin_issue_id` integer NOT NULL
+,  `target_issue_id` integer NOT NULL
+,  CONSTRAINT `gcd_reprint_origin_id_48220c89_fk_gcd_story_id` FOREIGN KEY (`origin_id`) REFERENCES `gcd_story` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_reprint_origin_issue_id_35ba9bf2_fk_gcd_issue_id` FOREIGN KEY (`origin_issue_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_reprint_target_id_44bd71ce_fk_gcd_story_id` FOREIGN KEY (`target_id`) REFERENCES `gcd_story` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_reprint_target_issue_id_c4c7d013_fk_gcd_issue_id` FOREIGN KEY (`target_issue_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | origin_id=209149 | target_id=902285 | notes= | created=2021-09-03 20:41:50.854236 | modified=2021-10-03 14:54:23.061661 | origin_issue_id=35078 | target_issue_id=635839
+  sample: id=2 | origin_id=209630 | target_id=902283 | notes= | created=2021-09-03 20:41:50.854236 | modified=2021-10-03 14:54:23.065445 | origin_issue_id=35216 | target_issue_id=635839
+
+## gcd_school [table] — 902 rows
+CREATE TABLE `gcd_school` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `school_name` varchar(200) NOT NULL
+)
+  sample: id=1 | school_name=Abilene Christian College
+  sample: id=2 | school_name=Académie de la Grande Chaumière [Paris]
+
+## gcd_series [table] — 232820 rows
+CREATE TABLE `gcd_series` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `sort_name` varchar(255) NOT NULL
+,  `format` varchar(255) NOT NULL DEFAULT ''
+,  `year_began` integer NOT NULL
+,  `year_began_uncertain` integer NOT NULL DEFAULT '0'
+,  `year_ended` integer DEFAULT NULL
+,  `year_ended_uncertain` integer NOT NULL DEFAULT '0'
+,  `publication_dates` varchar(255) NOT NULL DEFAULT ''
+,  `first_issue_id` integer DEFAULT NULL
+,  `last_issue_id` integer DEFAULT NULL
+,  `is_current` integer NOT NULL DEFAULT '0'
+,  `publisher_id` integer NOT NULL
+,  `country_id` integer NOT NULL
+,  `language_id` integer NOT NULL
+,  `tracking_notes` longtext NOT NULL
+,  `notes` longtext NOT NULL
+,  `has_gallery` integer NOT NULL DEFAULT '0'
+,  `issue_count` integer NOT NULL
+,  `created` datetime NOT NULL DEFAULT '1901-01-01 00:00:00'
+,  `modified` datetime NOT NULL DEFAULT '1901-01-01 00:00:00'
+,  `deleted` integer NOT NULL DEFAULT '0'
+,  `has_indicia_frequency` integer NOT NULL DEFAULT '1'
+,  `has_isbn` integer NOT NULL DEFAULT '1'
+,  `has_barcode` integer NOT NULL DEFAULT '1'
+,  `has_issue_title` integer NOT NULL DEFAULT '0'
+,  `has_volume` integer NOT NULL DEFAULT '1'
+,  `is_comics_publication` integer NOT NULL DEFAULT '1'
+,  `color` varchar(255) NOT NULL
+,  `dimensions` varchar(255) NOT NULL
+,  `paper_stock` varchar(255) NOT NULL
+,  `binding` varchar(255) NOT NULL
+,  `publishing_format` varchar(255) NOT NULL
+,  `has_rating` integer NOT NULL
+,  `publication_type_id` integer
+,  `is_singleton` integer NOT NULL
+,  `has_about_comics` integer NOT NULL
+,  `has_indicia_printer` integer NOT NULL
+,  `has_publisher_code_number` integer NOT NULL
+,  CONSTRAINT `gcd_series_ibfk_2` FOREIGN KEY (`publisher_id`) REFERENCES `gcd_publisher` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_series_ibfk_3` FOREIGN KEY (`country_id`) REFERENCES `stddata_country` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_series_ibfk_4` FOREIGN KEY (`language_id`) REFERENCES `stddata_language` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_series_ibfk_5` FOREIGN KEY (`first_issue_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_series_ibfk_6` FOREIGN KEY (`last_issue_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `publication_type_id_refs_id_2c468df7974b9efa` FOREIGN KEY (`publication_type_id`) REFERENCES `gcd_series_publication_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | name=Two Hundred Sketches Humorous and Grotesque | sort_name=Two Hundred Sketches Humorous and Grotesque | format= | year_began=1867 | year_began_uncertain=0 | year_ended=1867 | year_ended_uncertain=0 | publication_dates= | first_issue_id=1 | last_issue_id=1 | is_current=0 | publisher_id=12 | country_id=225 | language_id=25 | tracking_notes= | notes= | has_gallery=0 | issue_count=1 | created=1999-04-10 00:00:00 | modified=2025-07-09 03:38:25 | deleted=0 | has_indicia_frequency=1 | has_isbn=0 | has_barcode=0 | has_issue_title=0 | has_volume=1 | is_comics_publication=1 | color=black and white cover; black and white interior | dimensions=11-7/16" x 13-3/4" | paper_stock= | binding=hardcover | publishing_format=standalone | has_rating=0 | publication_type_id=1 | is_singleton=1 | has_about_comics=0 | has_indicia_printer=1 | has_publisher_code_number=0
+  sample: id=2 | name=A Bushel of Merry-Thoughts | sort_name=Bushel of Merry-Thoughts | format= | year_began=1868 | year_began_uncertain=0 | year_ended=1868 | year_ended_uncertain=0 | publication_dates= | first_issue_id=2 | last_issue_id=2 | is_current=0 | publisher_id=2 | country_id=75 | language_id=25 | tracking_notes= | notes= | has_gallery=1 | issue_count=1 | created=1999-04-10 00:00:00 | modified=2024-12-11 10:01:01 | deleted=0 | has_indicia_frequency=0 | has_isbn=0 | has_barcode=0 | has_issue_title=0 | has_volume=0 | is_comics_publication=1 | color=colour cover; black and white interior; Printed one side of page only | dimensions=6-1/2" tall x 10" wide | paper_stock= | binding=hardcover | publishing_format=standalone | has_rating=0 | publication_type_id=1 | is_singleton=1 | has_about_comics=0 | has_indicia_printer=1 | has_publisher_code_number=0
+
+## gcd_series_bond [table] — 6798 rows
+CREATE TABLE `gcd_series_bond` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `origin_id` integer NOT NULL
+,  `target_id` integer NOT NULL
+,  `origin_issue_id` integer DEFAULT NULL
+,  `target_issue_id` integer DEFAULT NULL
+,  `bond_type_id` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `reserved` integer NOT NULL
+,  CONSTRAINT `bond_type_id_refs_id_74608925967dca7d` FOREIGN KEY (`bond_type_id`) REFERENCES `gcd_series_bond_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `origin_id_refs_id_2e5ee5bcc36327a6` FOREIGN KEY (`origin_id`) REFERENCES `gcd_series` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `origin_issue_id_refs_id_14846e21180392d7` FOREIGN KEY (`origin_issue_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `target_id_refs_id_2e5ee5bcc36327a6` FOREIGN KEY (`target_id`) REFERENCES `gcd_series` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `target_issue_id_refs_id_14846e21180392d7` FOREIGN KEY (`target_issue_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | origin_id=4613 | target_id=7124 | origin_issue_id=230288 | target_issue_id=64325 | bond_type_id=2 | notes= | reserved=0
+  sample: id=2 | origin_id=16576 | target_id=52095 | origin_issue_id=273790 | target_issue_id=273791 | bond_type_id=3 | notes= | reserved=0
+
+## gcd_series_bond_type [table] — 7 rows
+CREATE TABLE `gcd_series_bond_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `description` longtext NOT NULL
+,  `notes` longtext NOT NULL
+)
+  sample: id=1 | name=minor_name_numbering_continues | description=Tracks numbering from one series to another due to minor name changes. | notes=Minor name changes include for example adding or dropping of leading articles.
+  sample: id=2 | name=major_name_numbering_continues | description=Tracks numbering from one series to another due to major name changes. | notes=
+
+## gcd_series_publication_type [table] — 3 rows
+CREATE TABLE `gcd_series_publication_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `notes` longtext NOT NULL
+)
+  sample: id=1 | name=book | notes=
+  sample: id=2 | name=magazine | notes=
+
+## gcd_story [table] — 4547014 rows
+CREATE TABLE `gcd_story` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `title` varchar(255) NOT NULL DEFAULT ''
+,  `title_inferred` integer NOT NULL DEFAULT '0'
+,  `feature` varchar(255) NOT NULL
+,  `sequence_number` integer NOT NULL
+,  `page_count` decimal(10,3) DEFAULT NULL
+,  `issue_id` integer NOT NULL
+,  `script` longtext NOT NULL
+,  `pencils` longtext NOT NULL
+,  `inks` longtext NOT NULL
+,  `colors` longtext NOT NULL
+,  `letters` longtext NOT NULL
+,  `editing` longtext NOT NULL
+,  `genre` varchar(255) NOT NULL DEFAULT ''
+,  `characters` longtext NOT NULL
+,  `synopsis` longtext NOT NULL
+,  `reprint_notes` longtext NOT NULL
+,  `created` datetime NOT NULL DEFAULT '1901-01-01 00:00:00'
+,  `modified` datetime NOT NULL DEFAULT '1901-01-01 00:00:00'
+,  `notes` longtext NOT NULL
+,  `no_script` integer NOT NULL DEFAULT '0'
+,  `no_pencils` integer NOT NULL DEFAULT '0'
+,  `no_inks` integer NOT NULL DEFAULT '0'
+,  `no_colors` integer NOT NULL DEFAULT '0'
+,  `no_letters` integer NOT NULL DEFAULT '0'
+,  `no_editing` integer NOT NULL DEFAULT '0'
+,  `page_count_uncertain` integer NOT NULL DEFAULT '0'
+,  `type_id` integer NOT NULL
+,  `job_number` varchar(25) NOT NULL DEFAULT ''
+,  `deleted` integer NOT NULL DEFAULT '0'
+,  `first_line` varchar(255) NOT NULL
+,  CONSTRAINT `gcd_story_ibfk_1` FOREIGN KEY (`issue_id`) REFERENCES `gcd_issue` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_ibfk_2` FOREIGN KEY (`type_id`) REFERENCES `gcd_story_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=6 | title=The Secret of Painted Desert | title_inferred=1 | feature= | sequence_number=5 | page_count=6 | issue_id=12207 | script= | pencils= | inks= | colors=? | letters=? | editing= | genre=western-frontier | characters= | synopsis= | reprint_notes= | created=2003-05-31 00:00:00 | modified=2021-02-26 03:33:14 | notes= | no_script=0 | no_pencils=0 | no_inks=0 | no_colors=0 | no_letters=0 | no_editing=1 | page_count_uncertain=0 | type_id=19 | job_number=G-143 | deleted=0 | first_line=
+  sample: id=7 | title=Winner Take All! | title_inferred=0 | feature= | sequence_number=6 | page_count=5 | issue_id=12943 | script= | pencils= | inks= | colors=? | letters= | editing= | genre=western-frontier | characters= | synopsis= | reprint_notes= | created=2003-05-31 00:00:00 | modified=2026-09-11 10:00:35 | notes=Lettering credit from Dick Ayers via Mike Quilligan. Inks credit from Jim Vadabo… | no_script=0 | no_pencils=0 | no_inks=0 | no_colors=0 | no_letters=0 | no_editing=1 | page_count_uncertain=0 | type_id=19 | job_number=J-293 | deleted=0 | first_line=
+
+## gcd_story_arc [table] — 582 rows
+CREATE TABLE `gcd_story_arc` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `sort_name` varchar(255) NOT NULL
+,  `disambiguation` varchar(255) NOT NULL
+,  `description` longtext NOT NULL
+,  `notes` longtext NOT NULL
+,  `language_id` integer NOT NULL
+,  `year_first_published` integer DEFAULT NULL
+,  `year_first_published_uncertain` integer NOT NULL
+,  CONSTRAINT `gcd_story_arc_language_id_4880d4a7_fk_stddata_language_id` FOREIGN KEY (`language_id`) REFERENCES `stddata_language` (`id`)
+)
+  sample: id=1 | created=2025-09-13 19:07:28.952645 | modified=2025-09-13 19:07:28.953623 | deleted=0 | name=The Joker War | sort_name=Joker War | disambiguation= | description=The story arc involves the return of Batman's archenemy, the Joker, and his plan… | notes= | language_id=25 | year_first_published=NULL | year_first_published_uncertain=0
+  sample: id=2 | created=2025-09-13 20:43:48.955294 | modified=2025-09-13 20:43:48.957665 | deleted=0 | name=Extreme Prejudice | sort_name=Extreme Prejudice | disambiguation= | description= | notes= | language_id=25 | year_first_published=NULL | year_first_published_uncertain=0
+
+## gcd_story_arc_relation [table] — 22 rows
+CREATE TABLE `gcd_story_arc_relation` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `notes` longtext NOT NULL
+,  `from_story_arc_id` integer NOT NULL
+,  `relation_type_id` integer NOT NULL
+,  `to_story_arc_id` integer NOT NULL
+,  CONSTRAINT `gcd_story_arc_relati_from_story_arc_id_54a3fed9_fk_gcd_story` FOREIGN KEY (`from_story_arc_id`) REFERENCES `gcd_story_arc` (`id`)
+,  CONSTRAINT `gcd_story_arc_relati_relation_type_id_fe1e25d8_fk_gcd_story` FOREIGN KEY (`relation_type_id`) REFERENCES `gcd_story_arc_relation_type` (`id`)
+,  CONSTRAINT `gcd_story_arc_relati_to_story_arc_id_5f72f57a_fk_gcd_story` FOREIGN KEY (`to_story_arc_id`) REFERENCES `gcd_story_arc` (`id`)
+)
+  sample: id=1 | created=2025-09-21 16:15:41.411428 | modified=2025-09-21 16:15:41.411461 | notes= | from_story_arc_id=1 | relation_type_id=1 | to_story_arc_id=81
+  sample: id=2 | created=2025-09-21 16:58:20.182988 | modified=2025-09-21 16:58:20.183008 | notes= | from_story_arc_id=1 | relation_type_id=1 | to_story_arc_id=83
+
+## gcd_story_arc_relation_type [table] — 2 rows
+CREATE TABLE `gcd_story_arc_relation_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(255) NOT NULL
+,  `description` varchar(255) NOT NULL
+,  `reverse_description` varchar(255) NOT NULL
+)
+  sample: id=1 | name=main arc of | description=related main arc of | reverse_description=related sub arc of
+  sample: id=2 | name=translated as | description=as story arc in another language | reverse_description=as story arc in original language
+
+## gcd_story_character [table] — 2043930 rows
+CREATE TABLE `gcd_story_character` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `is_flashback` integer NOT NULL
+,  `is_origin` integer NOT NULL
+,  `is_death` integer NOT NULL
+,  `notes` longtext NOT NULL
+,  `character_id` integer NOT NULL
+,  `role_id` integer DEFAULT NULL
+,  `story_id` integer NOT NULL
+,  `universe_id` integer DEFAULT NULL
+,  `group_universe_id` integer DEFAULT NULL
+,  CONSTRAINT `gcd_story_character_character_id_eac50f28_fk_gcd_chara` FOREIGN KEY (`character_id`) REFERENCES `gcd_character_name_detail` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_character_group_universe_id_1660ef69_fk_gcd_unive` FOREIGN KEY (`group_universe_id`) REFERENCES `gcd_universe` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_character_role_id_f7883e66_fk_gcd_character_role_id` FOREIGN KEY (`role_id`) REFERENCES `gcd_character_role` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_character_story_id_13ce6388_fk_gcd_story_id` FOREIGN KEY (`story_id`) REFERENCES `gcd_story` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_character_universe_id_a98c97a2_fk_gcd_universe_id` FOREIGN KEY (`universe_id`) REFERENCES `gcd_universe` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2021-10-03 18:39:21.348700 | modified=2026-05-08 21:38:18.892525 | deleted=0 | is_flashback=0 | is_origin=0 | is_death=0 | notes= | character_id=2568 | role_id=NULL | story_id=1010672 | universe_id=1 | group_universe_id=NULL
+  sample: id=2 | created=2021-10-03 18:39:21.361899 | modified=2026-05-08 21:38:18.903056 | deleted=0 | is_flashback=0 | is_origin=0 | is_death=0 | notes= | character_id=2568 | role_id=NULL | story_id=1010671 | universe_id=1 | group_universe_id=NULL
+
+## gcd_story_character_group [table] — 142996 rows
+CREATE TABLE `gcd_story_character_group` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `storycharacter_id` integer NOT NULL
+,  `group_id` integer NOT NULL
+,  UNIQUE (`storycharacter_id`,`group_id`)
+,  CONSTRAINT `gcd_story_character__storycharacter_id_1cab539d_fk_gcd_story` FOREIGN KEY (`storycharacter_id`) REFERENCES `gcd_story_character` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_character_group_group_id_191387e6_fk_gcd_group_id` FOREIGN KEY (`group_id`) REFERENCES `gcd_group` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | storycharacter_id=596 | group_id=239
+  sample: id=2 | storycharacter_id=597 | group_id=239
+
+## gcd_story_credit [table] — 12016674 rows
+CREATE TABLE `gcd_story_credit` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `is_credited` integer NOT NULL
+,  `is_signed` integer NOT NULL
+,  `uncertain` integer NOT NULL
+,  `signed_as` varchar(255) NOT NULL
+,  `credited_as` varchar(255) NOT NULL
+,  `credit_name` varchar(255) NOT NULL
+,  `creator_id` integer NOT NULL
+,  `credit_type_id` integer NOT NULL
+,  `story_id` integer NOT NULL
+,  `signature_id` integer DEFAULT NULL
+,  `is_sourced` integer NOT NULL
+,  `sourced_by` varchar(255) NOT NULL
+,  CONSTRAINT `gcd_story_credit_creator_id_7c632a78_fk_gcd_creat` FOREIGN KEY (`creator_id`) REFERENCES `gcd_creator_name_detail` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_credit_credit_type_id_2b1eda8a_fk_gcd_credit_type_id` FOREIGN KEY (`credit_type_id`) REFERENCES `gcd_credit_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_credit_signature_id_0c4a25cd_fk_gcd_creat` FOREIGN KEY (`signature_id`) REFERENCES `gcd_creator_signature` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_credit_story_id_7b35c2b5_fk_gcd_story_id` FOREIGN KEY (`story_id`) REFERENCES `gcd_story` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2019-12-08 10:08:16.579972 | modified=2025-10-13 19:31:53.273334 | deleted=0 | is_credited=1 | is_signed=0 | uncertain=0 | signed_as= | credited_as= | credit_name= | creator_id=14263 | credit_type_id=1 | story_id=2782804 | signature_id=NULL | is_sourced=0 | sourced_by=
+  sample: id=2 | created=2019-12-08 10:08:16.646154 | modified=2025-10-13 19:31:53.280313 | deleted=0 | is_credited=1 | is_signed=0 | uncertain=0 | signed_as= | credited_as= | credit_name= | creator_id=17056 | credit_type_id=2 | story_id=2782805 | signature_id=NULL | is_sourced=0 | sourced_by=
+
+## gcd_story_feature_logo [table] — 107122 rows
+CREATE TABLE `gcd_story_feature_logo` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `story_id` integer NOT NULL
+,  `featurelogo_id` integer NOT NULL
+,  UNIQUE (`story_id`,`featurelogo_id`)
+,  CONSTRAINT `gcd_story_feature_lo_featurelogo_id_169a1ec3_fk_gcd_featu` FOREIGN KEY (`featurelogo_id`) REFERENCES `gcd_feature_logo` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_feature_logo_story_id_41377b84_fk_gcd_story_id` FOREIGN KEY (`story_id`) REFERENCES `gcd_story` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | story_id=2782807 | featurelogo_id=346
+  sample: id=2 | story_id=2782810 | featurelogo_id=346
+
+## gcd_story_feature_name [table] — 2677164 rows
+CREATE TABLE `gcd_story_feature_name` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `story_id` integer NOT NULL
+,  `featurenamedetail_id` integer NOT NULL
+,  UNIQUE (`story_id`,`featurenamedetail_id`)
+,  CONSTRAINT `gcd_story_feature_na_featurenamedetail_id_a733c356_fk_gcd_featu` FOREIGN KEY (`featurenamedetail_id`) REFERENCES `gcd_feature_detail_name` (`id`)
+,  CONSTRAINT `gcd_story_feature_name_story_id_f08a5147_fk_gcd_story_id` FOREIGN KEY (`story_id`) REFERENCES `gcd_story` (`id`)
+)
+  sample: id=1 | story_id=3730841 | featurenamedetail_id=39492
+  sample: id=2 | story_id=3292016 | featurenamedetail_id=19180
+
+## gcd_story_story_arc [table] — 4629 rows
+CREATE TABLE `gcd_story_story_arc` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `story_id` integer NOT NULL
+,  `storyarc_id` integer NOT NULL
+,  UNIQUE (`story_id`,`storyarc_id`)
+,  CONSTRAINT `gcd_story_story_arc_story_id_406c134b_fk_gcd_story_id` FOREIGN KEY (`story_id`) REFERENCES `gcd_story` (`id`)
+,  CONSTRAINT `gcd_story_story_arc_storyarc_id_4b052401_fk_gcd_story_arc_id` FOREIGN KEY (`storyarc_id`) REFERENCES `gcd_story_arc` (`id`)
+)
+  sample: id=1 | story_id=2998458 | storyarc_id=1
+  sample: id=2 | story_id=2956437 | storyarc_id=1
+
+## gcd_story_type [table] — 29 rows
+CREATE TABLE `gcd_story_type` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(50) NOT NULL
+,  `sort_code` integer NOT NULL
+,  UNIQUE (`name`)
+,  UNIQUE (`sort_code`)
+)
+  sample: id=1 | name=activity | sort_code=24
+  sample: id=2 | name=advertisement | sort_code=21
+
+## gcd_story_universe [table] — 95180 rows
+CREATE TABLE `gcd_story_universe` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `story_id` integer NOT NULL
+,  `universe_id` integer NOT NULL
+,  UNIQUE (`story_id`,`universe_id`)
+,  CONSTRAINT `gcd_story_universe_story_id_6cbde435_fk_gcd_story_id` FOREIGN KEY (`story_id`) REFERENCES `gcd_story` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `gcd_story_universe_universe_id_d3185012_fk_gcd_universe_id` FOREIGN KEY (`universe_id`) REFERENCES `gcd_universe` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=2 | story_id=151641 | universe_id=2
+  sample: id=3 | story_id=3892675 | universe_id=2
+
+## gcd_universe [table] — 982 rows
+CREATE TABLE `gcd_universe` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `created` datetime(6) NOT NULL
+,  `modified` datetime(6) NOT NULL
+,  `deleted` integer NOT NULL
+,  `multiverse` varchar(255) NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `designation` varchar(255) NOT NULL
+,  `year_first_published` integer DEFAULT NULL
+,  `year_first_published_uncertain` integer NOT NULL
+,  `description` longtext NOT NULL
+,  `notes` longtext NOT NULL
+,  `verse_id` integer DEFAULT NULL
+,  CONSTRAINT `gcd_universe_verse_id_b2ae21fa_fk_gcd_multiverse_id` FOREIGN KEY (`verse_id`) REFERENCES `gcd_multiverse` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=1 | created=2022-08-07 15:43:01.651664 | modified=2024-01-07 17:32:06.608290 | deleted=0 | multiverse=DC | name=mainstream | designation= | year_first_published=1935 | year_first_published_uncertain=0 | description=Within the DC multiverse, the mainstream universe has gone by many names. From 1… | notes=The mainstream DC Comics universe began in New Fun (DC, 1935 series) #1 (Februar… | verse_id=1
+  sample: id=2 | created=2022-08-07 15:43:52.550390 | modified=2024-01-07 17:32:06.813279 | deleted=0 | multiverse=Marvel | name=mainstream | designation= | year_first_published=1940 | year_first_published_uncertain=0 | description=Some of Timely Comics characters coexisted in the same world, as was first estab… | notes= | verse_id=2
+
+## stddata_country [table] — 273 rows
+CREATE TABLE `stddata_country` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `code` varchar(10) NOT NULL
+,  `name` varchar(255) NOT NULL
+,  UNIQUE (`code`)
+)
+  sample: id=1 | code=ad | name=Andorra
+  sample: id=2 | code=ae | name=United Arab Emirates
+
+## stddata_date [table] — 843890 rows
+CREATE TABLE `stddata_date` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `year` varchar(4) NOT NULL
+,  `month` varchar(2) NOT NULL
+,  `day` varchar(2) NOT NULL
+,  `year_uncertain` integer NOT NULL
+,  `month_uncertain` integer NOT NULL
+,  `day_uncertain` integer NOT NULL
+)
+  sample: id=1 | year= | month= | day= | year_uncertain=0 | month_uncertain=0 | day_uncertain=0
+  sample: id=3 | year= | month= | day= | year_uncertain=0 | month_uncertain=0 | day_uncertain=0
+
+## stddata_language [table] — 163 rows
+CREATE TABLE `stddata_language` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `code` varchar(10) NOT NULL
+,  `name` varchar(255) NOT NULL
+,  `native_name` varchar(255) NOT NULL
+,  UNIQUE (`code`)
+)
+  sample: id=1 | code=aa | name=Afar | native_name=
+  sample: id=2 | code=ab | name=Abkhazian | native_name=aҧсшәа
+
+## stddata_script [table] — 84 rows
+CREATE TABLE `stddata_script` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `code` varchar(4) NOT NULL
+,  `number` integer  NOT NULL
+,  `name` varchar(64) NOT NULL
+,  UNIQUE (`code`)
+,  UNIQUE (`number`)
+)
+  sample: id=1 | code=Adlm | number=166 | name=Adlam
+  sample: id=2 | code=Arab | number=160 | name=Arabic
+
+## taggit_tag [table] — 93468 rows
+CREATE TABLE `taggit_tag` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `name` varchar(100) NOT NULL
+,  `slug` varchar(100) NOT NULL
+,  UNIQUE (`slug`)
+)
+  sample: id=1 | name=time travel | slug=time-travel
+  sample: id=2 | name=snowman | slug=snowman
+
+## taggit_taggeditem [table] — 694569 rows
+CREATE TABLE `taggit_taggeditem` (
+  `id` integer NOT NULL PRIMARY KEY AUTOINCREMENT
+,  `tag_id` integer NOT NULL
+,  `object_id` integer NOT NULL
+,  `content_type_id` integer NOT NULL
+,  UNIQUE (`content_type_id`,`object_id`,`tag_id`)
+,  CONSTRAINT `taggit_taggeditem_ibfk_1` FOREIGN KEY (`content_type_id`) REFERENCES `django_content_type` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+,  CONSTRAINT `taggit_taggeditem_ibfk_2` FOREIGN KEY (`tag_id`) REFERENCES `taggit_tag` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+)
+  sample: id=14 | tag_id=14 | object_id=941042 | content_type_id=12
+  sample: id=59 | tag_id=56 | object_id=1069551 | content_type_id=13
+
