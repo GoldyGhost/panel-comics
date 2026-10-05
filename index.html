@@ -418,8 +418,9 @@ let friendSearchResults = [];
 let watchlists = [];        // [{id, name}]
 let watchlistItems = [];    // [{watchlist_id, issue_id, position}]
 let heroesByIssue = {};     // issue_id -> [hero name, ...]
-let allHeroNames = [];      // sorted distinct hero names, for the Browse filter
+let allHeroNames = [];      // sorted distinct hero names (not shown directly; kept for a possible future autocomplete)
 let newWatchlistNameDraft = '';
+let heroSearchDraft = '';
 let state = {
   tab:'home', groupBy:'series', search:'', filterYearFrom:'', filterYearTo:'', filterHero:'', browsePage:1,
   viewingFriendId:null, friendFilterSeries:'', friendFilterRating:'', friendSortOrder:'desc', friendShowAllReads:false,
@@ -514,6 +515,19 @@ sb.auth.onAuthStateChange((_event, sess)=>{
 });
 
 /* ---------------- DATA ACCESS (Supabase) ---------------- */
+const ISSUES_CACHE_KEY = 'tomics_issues_cache_v1';
+function loadCachedIssues(){
+  try {
+    const raw = localStorage.getItem(ISSUES_CACHE_KEY);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed.data) ? parsed.data : null;
+  } catch(e){ return null; }
+}
+function saveCachedIssues(data){
+  try { localStorage.setItem(ISSUES_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() })); }
+  catch(e){ /* storage full/unavailable — just skip caching this time */ }
+}
 async function fetchIssues(){
   let all = [];
   let from = 0;
@@ -727,11 +741,18 @@ async function finishBoot(){
     document.getElementById('logoutBtn').addEventListener('click', logout);
   }
   await ensureDefaultReadingList();
-  const [issues, allLogs, followingList, followerList, wls, wlItems] = await Promise.all([
-    fetchIssues(), fetchLogs(), fetchFollowing(), fetchFollowers(), fetchWatchlists(), fetchWatchlistItems(),
+  // The issue catalogue is by far the biggest fetch (thousands of rows,
+  // several pages) and the least likely to have changed since last visit.
+  // If a cached copy exists, use it immediately instead of waiting on the
+  // network — a fresh copy still loads in the background and silently
+  // replaces it (and the cache) once it arrives.
+  const cachedIssues = loadCachedIssues();
+  const issuesPromise = fetchIssues().then(data => { saveCachedIssues(data); return data; });
+  const [allLogs, followingList, followerList, wls, wlItems] = await Promise.all([
+    fetchLogs(), fetchFollowing(), fetchFollowers(), fetchWatchlists(), fetchWatchlistItems(),
     fetchHeroNames() // fast — just enough to fill the Hero dropdown; sets allHeroNames itself
   ]);
-  issuesCache = issues;
+  issuesCache = (cachedIssues && cachedIssues.length) ? cachedIssues : await issuesPromise;
   splitLogs(allLogs);
   followingIds = new Set(followingList);
   followerIds = new Set(followerList);
@@ -742,6 +763,9 @@ async function finishBoot(){
   profs.forEach(p=>{ followingProfiles[p.id] = p; followerProfiles[p.id] = p; });
   render();
   hideLoadingScreen();
+  if(cachedIssues && cachedIssues.length){
+    issuesPromise.then(freshIssues=>{ issuesCache = freshIssues; render(); });
+  }
   fetchHeroLinksInBackground(); // the big issue<->character table; not awaited, never blocks boot
 }
 let logsByIssueId = new Map(); // issue id -> own logs on that issue (built once per fetch, not per card)
@@ -868,17 +892,21 @@ function filteredIssues(){
   }
   if(state.filterYearFrom) list = list.filter(i => i.year && i.year >= parseInt(state.filterYearFrom,10));
   if(state.filterYearTo) list = list.filter(i => i.year && i.year <= parseInt(state.filterYearTo,10));
-  if(state.filterHero) list = list.filter(i => (heroesByIssue[i.id]||[]).includes(state.filterHero));
+  if(state.filterHero){
+    const q = normSearch(state.filterHero);
+    list = list.filter(i => (heroesByIssue[i.id]||[]).some(name => normSearch(name).includes(q)));
+  }
   return list;
 }
 function computeContinueSeries(){
   const loggedIds = new Set(logsCache.map(l=>l.issueId));
+  const queuedIds = new Set(watchlistItems.map(it=>it.issue_id)); // already set aside in a list — not "next"
   const bySeriesLoggedNumbers = {};
   issuesCache.forEach(i=>{ if(loggedIds.has(i.id)){ (bySeriesLoggedNumbers[i.seriesId] = bySeriesLoggedNumbers[i.seriesId]||[]).push(i.number); } });
   const results = [];
   Object.keys(bySeriesLoggedNumbers).forEach(sid=>{
     const maxLogged = Math.max(...bySeriesLoggedNumbers[sid]);
-    const candidates = issuesCache.filter(i=> i.seriesId===sid && i.number>maxLogged && !loggedIds.has(i.id));
+    const candidates = issuesCache.filter(i=> i.seriesId===sid && i.number>maxLogged && !loggedIds.has(i.id) && !queuedIds.has(i.id));
     if(candidates.length){
       candidates.sort((a,b)=>a.number-b.number);
       results.push(candidates[0]);
@@ -929,7 +957,7 @@ document.getElementById('tabs').addEventListener('click', e=>{
 let searchDebounceTimer = null;
 document.getElementById('searchInput').addEventListener('input', e=>{
   state.search = e.target.value;
-  state.browsePage = 1;
+  state.browsePage = 1; browseExpandedGroups.clear();
   if(state.tab!=='browse'){ setTab('browse'); return; }
   clearTimeout(searchDebounceTimer);
   searchDebounceTimer = setTimeout(render, 180);
@@ -993,7 +1021,9 @@ function renderHome(){
   <div class="grid">${discover.map(issueCardHtml).join('')}</div>`;
 }
 
-const BROWSE_PAGE_SIZE = 15; // groups per page, keeps each render fast even with a huge catalogue
+const BROWSE_PAGE_SIZE = 7; // groups per page (halved), keeps each render fast even with a huge catalogue
+let browseExpandedGroups = new Set(); // group keys the user chose to fully expand
+function groupIssueCap(){ return window.innerWidth <= 720 ? 3 : 7; } // phone/tablet vs desktop
 function renderBrowse(){
   const issues = filteredIssues();
   const groups = {};
@@ -1024,7 +1054,6 @@ function renderBrowse(){
         <option value="series" ${state.groupBy==='series'?'selected':''}>Series</option>
         <option value="storyline" ${state.groupBy==='storyline'?'selected':''}>Storyline (across series)</option>
       </select>
-      <span class="bc-count">${issues.length} issue${issues.length!==1?'s':''}</span>
     </div>
     <div class="bc-row">
       <label>From year</label>
@@ -1034,14 +1063,17 @@ function renderBrowse(){
     </div>
     <div class="bc-row">
       <label>Hero</label>
-      <select id="heroSelect">
-        <option value="">Any hero</option>
-        ${allHeroNames.map(n=>`<option value="${escapeHtml(n)}" ${state.filterHero===n?'selected':''}>${escapeHtml(n)}</option>`).join('')}
-      </select>
+      <input type="text" id="heroSearchInput" placeholder="e.g. Spider-Man, spiderman, Spider Man…" value="${escapeHtml(heroSearchDraft)}">
+      <button class="log-group-btn" id="heroSearchBtn">Search</button>
+      ${state.filterHero ? `<button class="log-group-btn" id="heroSearchClear">✕ Clear</button>` : ''}
     </div>
   </div>
   ${keys.length ? keys.map(k=>{
     const g = groups[k];
+    const cap = groupIssueCap();
+    const expanded = browseExpandedGroups.has(k);
+    const shown = expanded ? g.issues : g.issues.slice(0, cap);
+    const hasMore = g.issues.length > cap;
     return `<div class="group-block">
       <div class="group-head">
         <h3>${escapeHtml(g.label)} <span class="n">${g.issues.length} issue${g.issues.length!==1?'s':''}</span></h3>
@@ -1054,7 +1086,8 @@ function renderBrowse(){
           </select>
         </div>
       </div>
-      <div class="grid">${g.issues.map(issueCardHtml).join('')}</div>
+      <div class="grid">${shown.map(issueCardHtml).join('')}</div>
+      ${hasMore ? `<button class="log-group-btn" data-toggle-group-expand="${escapeHtml(k)}" style="margin-top:10px">${expanded ? '▲ Show fewer' : `Show all ${g.issues.length} →`}</button>` : ''}
     </div>`;
   }).join('')
     : `<div class="empty"><span class="display">Nothing here</span>Try a different search.</div>`}
@@ -1111,10 +1144,13 @@ function renderDiaryGroup(group){
 /* ---------------- READING LIST (watchlist) ---------------- */
 function renderWatchlist(){
   if(state.viewingWatchlistId) return renderWatchlistDetail(state.viewingWatchlistId);
-  const listsWithItems = watchlists.map(w=>({
-    ...w,
-    items: watchlistItems.filter(it=>it.watchlist_id===w.id).sort((a,b)=>(a.position||0)-(b.position||0))
-  }));
+  const listsWithItems = watchlists
+    .slice()
+    .sort((a,b)=> (a.is_default?1:0) - (b.is_default?1:0))
+    .map(w=>({
+      ...w,
+      items: watchlistItems.filter(it=>it.watchlist_id===w.id).sort((a,b)=>(a.position||0)-(b.position||0))
+    }));
   let allIssueIds = new Set(watchlistItems.map(it=>it.issue_id));
   let allIssues = issuesCache.filter(i=>allIssueIds.has(i.id));
   if(state.watchlistShowUnreadOnly) allIssues = allIssues.filter(i=>!isRead(i.id));
@@ -1386,17 +1422,29 @@ function attachMainEvents(){
     if(el.dataset.lightboxCover) el.addEventListener('click', ()=> openLightbox(el.dataset.lightboxCover));
   });
   const gs = document.getElementById('groupSelect');
-  if(gs) gs.addEventListener('change', e=>{ state.groupBy = e.target.value; state.browsePage = 1; render(); });
+  if(gs) gs.addEventListener('change', e=>{ state.groupBy = e.target.value; state.browsePage = 1; browseExpandedGroups.clear(); render(); });
   const yf = document.getElementById('yearFromSelect');
-  if(yf) yf.addEventListener('change', e=>{ state.filterYearFrom = e.target.value; state.browsePage = 1; render(); });
+  if(yf) yf.addEventListener('change', e=>{ state.filterYearFrom = e.target.value; state.browsePage = 1; browseExpandedGroups.clear(); render(); });
   const yt = document.getElementById('yearToSelect');
-  if(yt) yt.addEventListener('change', e=>{ state.filterYearTo = e.target.value; state.browsePage = 1; render(); });
-  const hs = document.getElementById('heroSelect');
-  if(hs) hs.addEventListener('change', e=>{ state.filterHero = e.target.value; state.browsePage = 1; render(); });
+  if(yt) yt.addEventListener('change', e=>{ state.filterYearTo = e.target.value; state.browsePage = 1; browseExpandedGroups.clear(); render(); });
+  const hsi = document.getElementById('heroSearchInput');
+  if(hsi){
+    hsi.addEventListener('input', e=>{ heroSearchDraft = e.target.value; });
+    hsi.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('heroSearchBtn').click(); } });
+  }
+  const hsb = document.getElementById('heroSearchBtn');
+  if(hsb) hsb.addEventListener('click', ()=>{ state.filterHero = heroSearchDraft.trim(); state.browsePage = 1; browseExpandedGroups.clear(); render(); });
+  const hsc = document.getElementById('heroSearchClear');
+  if(hsc) hsc.addEventListener('click', ()=>{ heroSearchDraft = ''; state.filterHero = ''; state.browsePage = 1; browseExpandedGroups.clear(); render(); });
   const bPrev = document.getElementById('browsePrev');
   if(bPrev) bPrev.addEventListener('click', ()=>{ if(state.browsePage>1){ state.browsePage--; render(); window.scrollTo({top:0,behavior:'smooth'}); } });
   const bNext = document.getElementById('browseNext');
   if(bNext) bNext.addEventListener('click', ()=>{ state.browsePage++; render(); window.scrollTo({top:0,behavior:'smooth'}); });
+  document.querySelectorAll('[data-toggle-group-expand]').forEach(btn=> btn.addEventListener('click', ()=>{
+    const k = btn.dataset.toggleGroupExpand;
+    if(browseExpandedGroups.has(k)) browseExpandedGroups.delete(k); else browseExpandedGroups.add(k);
+    render();
+  }));
   document.querySelectorAll('.log-group-btn[data-group-key]').forEach(el=> el.addEventListener('click', ()=>{
     const key = el.dataset.groupKey;
     const group = lastGroups[key];
@@ -1528,8 +1576,27 @@ function attachMainEvents(){
 }
 document.addEventListener('click', ()=> document.querySelectorAll('.quick-add-menu.open').forEach(m=>m.classList.remove('open')));
 window.addEventListener('scroll', ()=> document.querySelectorAll('.quick-add-menu.open').forEach(m=>m.classList.remove('open')), true);
+let resizeDebounceTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeDebounceTimer);
+  resizeDebounceTimer = setTimeout(()=>{ if(state.tab==='browse') render(); }, 200);
+});
 function attachTouchReorder(){
   let sourceRow = null, sourceId = null, lastTarget = null;
+  const EDGE = 70, MAX_SPEED = 16;
+  let autoScrollSpeed = 0, autoScrollRaf = null;
+  function autoScrollStep(){
+    if(autoScrollSpeed !== 0){ window.scrollBy(0, autoScrollSpeed); autoScrollRaf = requestAnimationFrame(autoScrollStep); }
+    else autoScrollRaf = null;
+  }
+  function updateAutoScroll(clientY){
+    let speed = 0;
+    if(clientY < EDGE) speed = -MAX_SPEED * (1 - clientY/EDGE);
+    else if(clientY > window.innerHeight - EDGE) speed = MAX_SPEED * (1 - (window.innerHeight - clientY)/EDGE);
+    autoScrollSpeed = speed;
+    if(speed !== 0 && autoScrollRaf === null) autoScrollRaf = requestAnimationFrame(autoScrollStep);
+  }
+  function stopAutoScroll(){ autoScrollSpeed = 0; if(autoScrollRaf){ cancelAnimationFrame(autoScrollRaf); autoScrollRaf = null; } }
   document.querySelectorAll('.wl-row').forEach(row=>{
     const handle = row.querySelector('.drag-handle');
     if(!handle) return;
@@ -1541,6 +1608,7 @@ function attachTouchReorder(){
     });
     handle.addEventListener('pointermove', (e)=>{
       if(!sourceRow) return;
+      updateAutoScroll(e.clientY);
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const overRow = el && el.closest('.wl-row');
       if(lastTarget && lastTarget!==overRow) lastTarget.classList.remove('drag-over');
@@ -1549,6 +1617,7 @@ function attachTouchReorder(){
     });
     const finish = async ()=>{
       if(!sourceRow) return;
+      stopAutoScroll();
       sourceRow.classList.remove('dragging');
       const targetId = lastTarget ? lastTarget.dataset.dragIssue : null;
       if(lastTarget) lastTarget.classList.remove('drag-over');
