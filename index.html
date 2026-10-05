@@ -225,6 +225,7 @@
   /* AUTH / USERNAME SCREENS */
   .auth-wrap { max-width: 420px; margin: 60px auto; padding: 0 18px; }
   .auth-card { border: 3px solid var(--ink); background: var(--paper-2); border-radius: var(--radius); box-shadow: var(--card-shadow); padding: 26px; }
+  .auth-logo-img { display: block; margin: 0 auto 4px; width: 200px; max-width: 70%; height: auto; }
   .auth-card h1 { font-family:'Bangers',sans-serif; color: var(--red); font-size: 30px; margin: 0 0 4px; font-weight: 400; }
   .auth-card p.lede { font-size: 13px; color: var(--ink-soft); margin: 0 0 18px; }
   .auth-toggle { display:flex; gap:8px; margin-bottom:16px; }
@@ -321,7 +322,7 @@
 
 <div id="authScreen" class="auth-wrap" style="display:none">
   <div class="auth-card">
-    <h1 class="display">Tomics</h1>
+    <img src="/icons/tomics-wordmark-starburst.png" alt="Tomics" class="auth-logo-img">
     <p class="lede">Sign in to get back to your reading log, or create an account.</p>
     <div class="auth-toggle">
       <button id="toLogin" class="active">Sign in</button>
