@@ -246,6 +246,7 @@
 
   /* MOBILE */
   @media (max-width: 480px) {
+    #importWatchlistBtn { display: none; }
     .logo .sub { display: none; }
     .top-inner { flex-wrap: wrap; gap: 14px 10px; }
     .logo { order: 1; }
@@ -919,8 +920,20 @@ function computeContinueReadingLists(){
   watchlists.forEach(w=>{
     const items = watchlistItems.filter(it=>it.watchlist_id===w.id).sort((a,b)=>(a.position||0)-(b.position||0));
     const next = items.find(it=>!isRead(it.issue_id));
-    if(next){ const iss = issueById(next.issue_id); if(iss) results.push({ issue: iss, listName: w.name }); }
+    if(!next) return;
+    const iss = issueById(next.issue_id);
+    if(!iss) return;
+    // most recent loggedAt among this list's already-read items, so the
+    // list you last read from surfaces first
+    const readTimes = items
+      .map(it => logsByIssueId.get(it.issue_id))
+      .filter(Boolean)
+      .flat()
+      .map(l => l.loggedAt);
+    const lastReadAt = readTimes.length ? readTimes.sort().slice(-1)[0] : '';
+    results.push({ issue: iss, listName: w.name, lastReadAt });
   });
+  results.sort((a,b)=> b.lastReadAt.localeCompare(a.lastReadAt));
   return results;
 }
 let discoverCache = null;
@@ -1159,6 +1172,7 @@ function renderWatchlist(){
   <div class="browse-controls">
     <input type="text" id="newWatchlistName" placeholder="New list name…" value="${escapeHtml(newWatchlistNameDraft)}">
     <button class="log-group-btn" id="createWatchlistBtn">Create list</button>
+    <button class="log-group-btn" id="importWatchlistBtn">Import CSV</button>
   </div>
   ${listsWithItems.map(w=>`
     <div class="group-block">
