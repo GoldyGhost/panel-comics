@@ -91,12 +91,17 @@
   .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
   .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.35), transparent 45%); z-index: 2; }
   .cover .read-badge { position: absolute; bottom: 6px; right: 6px; background: var(--gold); color: var(--ink); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; border: 2px solid var(--ink); z-index: 3; }
+  .group-read-badge { position: static; display: inline-flex; width: 19px; height: 19px; font-size: 11px; vertical-align: middle; margin-right: 6px; }
   .icon-btn { background: none; border: 2px solid transparent; border-radius: var(--radius); color: var(--ink-soft); padding: 4px; line-height: 0; }
   .icon-btn:hover { border-color: var(--ink); color: var(--ink); }
   .icon-btn.danger:hover { color: var(--red); border-color: var(--red); }
   .diary-actions { display: flex; justify-content: flex-end; gap: 2px; margin-top: 8px; }
   .card-meta { margin-top: 7px; font-size: 12px; line-height: 1.3; }
   .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; }
+  .title-link { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+  .title-link:hover { text-decoration: underline; }
+  .card-meta .s.title-link { display: block; width: 100%; }
+  .card-meta .s.title-link:hover { color: var(--ink); }
 
   /* Fractional star rating (read-only display, small) */
   .star-cell { position: relative; display: inline-block; width: 1em; height: 1em; line-height: 0; }
@@ -131,8 +136,15 @@
   .diary-cover { width: 56px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; flex-shrink: 0; cursor: pointer; }
   .diary-cover::before { content:""; position:absolute; inset:0; background-image: repeating-radial-gradient(circle at 4px 4px, rgba(255,255,255,0.3) 0 1px, transparent 1.2px 6px); mix-blend-mode: overlay;}
   .diary-info .title { font-weight: 700; font-size: 14.5px; }
+  .diary-info .title-link { background: none; border: none; padding: 0; font: inherit; font-weight: 700; color: var(--ink); cursor: pointer; text-align: left; }
+  .diary-info .title-link:hover { text-decoration: underline; }
   .diary-info .sub { font-size: 12px; color: var(--ink-soft); margin: 2px 0 6px; }
   .diary-info .review { font-size: 13px; margin-top: 4px; }
+  .diary-expand-btn { background: none; border: none; padding: 0; margin-left: 8px; font-size: 11.5px; font-weight: 700; color: var(--blue); cursor: pointer; }
+  .diary-expand-btn:hover { text-decoration: underline; }
+  .diary-subissues { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .diary-subissue-chip { background: none; border: 1.5px solid var(--line); border-radius: 20px; padding: 3px 10px; font-size: 11.5px; color: var(--ink); cursor: pointer; }
+  .diary-subissue-chip:hover { border-color: var(--ink); background: var(--paper-2); }
   .diary-side { text-align: right; font-size: 12px; color: var(--ink-soft); white-space: nowrap; }
   .diary-side .stars { color: var(--gold); display: block; margin-bottom: 4px; }
   .del-btn { background: none; border: none; color: var(--red); font-size: 11px; margin-top: 6px; text-decoration: underline; padding: 0; }
@@ -153,7 +165,7 @@
   /* Reading list rows (detail view, drag-and-drop) */
   .wl-row { display: grid; grid-template-columns: 44px 1fr auto auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .wl-row .wl-cover { width: 44px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; }
-  .wl-row .wl-title { font-size: 13px; font-weight: 700; }
+  .wl-row .wl-title { font-size: 13px; font-weight: 700; display: block; }
   .wl-row .wl-sub { font-size: 11px; color: var(--ink-soft); }
   .drag-handle { cursor: grab; font-size: 18px; color: var(--ink-soft); padding: 10px 10px; touch-action: none; -webkit-user-select: none; user-select: none; }
   .wl-row.dragging { opacity: 0.4; }
@@ -940,6 +952,11 @@ async function deleteWatchlist(id){
   if(error){ alert("Error deleting list: " + error.message); return false; }
   return true;
 }
+async function renameWatchlist(id, name){
+  const { error } = await sb.from('watchlists').update({ name }).eq('id', id);
+  if(error){ alert("Error renaming list: " + error.message); return false; }
+  return true;
+}
 async function updateLogs(ids, fields){
   const { error } = await sb.from('logs').update(fields).in('id', ids);
   if(error){ alert("Error saving: " + error.message); return false; }
@@ -1015,6 +1032,7 @@ function splitLogs(allLogs){
     logsByIssueId.get(l.issueId).push(l);
   });
   readIssueIdSet = new Set(logsByIssueId.keys());
+  seriesFullyReadCache.clear();
 }
 async function refreshLogsAndRender(){ splitLogs(await fetchLogs()); render(); }
 async function refreshIssuesAndRender(){ issuesCache = await fetchIssues(); render(); }
@@ -1038,6 +1056,17 @@ async function refreshWatchlistsAndRender(){
 function issueById(id){ return issuesCache.find(i=>i.id===id); }
 function logsForIssue(id){ return (logsByIssueId.get(id) || []).slice().sort((a,b)=> b.dateRead.localeCompare(a.dateRead)); }
 function isRead(id){ return readIssueIdSet.has(id); }
+// Every issue Comic Vine (or our DB) knows about for this series has been
+// logged at least once — checked against the whole series, not just
+// whatever subset the current Browse filters happen to be showing.
+const seriesFullyReadCache = new Map();
+function isSeriesFullyRead(seriesId){
+  if(seriesFullyReadCache.has(seriesId)) return seriesFullyReadCache.get(seriesId);
+  const all = issuesCache.filter(i=>i.seriesId===seriesId);
+  const result = all.length > 0 && all.every(i=>isRead(i.id));
+  seriesFullyReadCache.set(seriesId, result);
+  return result;
+}
 // Rating is stored 0..10 (half-star units, 2 = 1 star).
 const STAR_PATH = "M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z";
 let __starUid = 0;
@@ -1097,7 +1126,7 @@ function issueCardHtml(issue, opts){
   const rated = ls.filter(l=>l.rating>0);
   const avg = rated.length ? Math.round(rated.reduce((a,l)=>a+l.rating,0)/rated.length) : null;
   return `<div class="issue-card">${coverEl(issue)}<div class="card-meta">
-    <div class="t">#${issue.number}</div><div class="s">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</div>
+    <div class="t">#${issue.number}</div><button type="button" class="s title-link" data-issue-title="${issue.id}">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</button>
     ${avg!=null ? `<div class="stars">${starsHtml(avg)}</div>` : ''}
     ${hideQuickAdd ? '' : `<button class="quick-add-btn" data-quick-add-toggle="${issue.id}" title="Add to a list" aria-label="Add to a list">⋯</button>${quickAddMenuHtml(issue.id)}`}
   </div></div>`;
@@ -1133,25 +1162,9 @@ function filteredIssues(){
   }
   return list;
 }
-function computeContinueSeries(){
-  const loggedIds = new Set(logsCache.map(l=>l.issueId));
-  const queuedIds = new Set(watchlistItems.map(it=>it.issue_id)); // already set aside in a list — not "next"
-  const bySeriesLoggedNumbers = {};
-  issuesCache.forEach(i=>{ if(loggedIds.has(i.id)){ (bySeriesLoggedNumbers[i.seriesId] = bySeriesLoggedNumbers[i.seriesId]||[]).push(i.number); } });
-  const results = [];
-  Object.keys(bySeriesLoggedNumbers).forEach(sid=>{
-    const maxLogged = Math.max(...bySeriesLoggedNumbers[sid]);
-    const candidates = issuesCache.filter(i=> i.seriesId===sid && i.number>maxLogged && !loggedIds.has(i.id) && !queuedIds.has(i.id));
-    if(candidates.length){
-      candidates.sort((a,b)=>a.number-b.number);
-      results.push(candidates[0]);
-    }
-  });
-  return results.slice(0,10);
-}
 function computeContinueReadingLists(){
   const results = [];
-  watchlists.forEach(w=>{
+  watchlists.filter(w=>!w.is_default).forEach(w=>{ // skip "Read Later" — it's a holding pen, not a real reading list
     const items = watchlistItems.filter(it=>it.watchlist_id===w.id).sort((a,b)=>(a.position||0)-(b.position||0));
     const next = items.find(it=>!isRead(it.issue_id));
     if(!next) return;
@@ -1194,8 +1207,8 @@ function setTab(tab){
   state.tab = tab;
   document.querySelectorAll('#tabs button').forEach(b=> b.classList.toggle('active', b.dataset.tab===tab));
   const searchRow = document.getElementById('searchRow');
-  if(tab==='browse'){ searchRow.style.display = 'block'; }
-  else { searchRow.style.display = 'none'; state.search=''; document.getElementById('searchInput').value=''; }
+  if(tab==='browse'){ searchRow.style.display = 'block'; document.getElementById('searchInput').value = state.search; }
+  else { searchRow.style.display = 'none'; } // keep state.search so it's still there when the user comes back to Browse
   render();
 }
 document.getElementById('tabs').addEventListener('click', e=>{
@@ -1243,7 +1256,6 @@ function renderHome(){
   const wlTotal = wlIssueIds.size;
   const wlRead = [...wlIssueIds].filter(id=>isRead(id)).length;
   const recentLogs = logsCache.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,6);
-  const continueList = computeContinueSeries();
   const continueLists = computeContinueReadingLists();
   const discover = getDiscover();
   const friendsRecent = computeFriendsRecent();
@@ -1256,8 +1268,6 @@ function renderHome(){
       <div class="stat"><b>${logsCache.length}</b><span>Logged reads</span></div>
       <div class="stat"><b>${wlTotal ? wlRead+'/'+wlTotal : '—'}</b><span>Reading list read</span></div>
     </div></div>
-  ${continueList.length ? `<div class="section-title"><h2>Continue the series</h2><span class="count">next unread issue</span></div>
-  <div class="row-scroll">${continueList.map(i=>`<div style="width:140px;flex-shrink:0">${issueCardHtml(i)}</div>`).join('')}</div>` : ''}
   ${continueLists.length ? `<div class="section-title"><h2>Continue the reading list</h2><span class="count">next up in each list</span></div>
   <div class="row-scroll">${continueLists.map(({issue,listName})=>`<div style="width:140px;flex-shrink:0">${issueCardHtml(issue)}<div style="font-size:11px;color:var(--ink-soft);margin-top:4px">${escapeHtml(listName)}</div></div>`).join('')}</div>` : ''}
   ${friendsRecent.length ? `<div class="section-title"><h2>Friends' recent reads</h2></div>
@@ -1321,9 +1331,10 @@ function renderBrowse(){
     const expanded = browseExpandedGroups.has(k);
     const shown = expanded ? g.issues : g.issues.slice(0, cap);
     const hasMore = g.issues.length > cap;
+    const seriesDone = state.groupBy==='series' && isSeriesFullyRead(k);
     return `<div class="group-block">
       <div class="group-head">
-        <h3>${escapeHtml(g.label)} <span class="n">${g.issues.length} issue${g.issues.length!==1?'s':''}</span></h3>
+        <h3>${seriesDone ? '<span class="read-badge group-read-badge" title="Series fully read">✓</span>' : ''}${escapeHtml(g.label)} <span class="n">${g.issues.length} issue${g.issues.length!==1?'s':''}</span></h3>
         <div class="group-head-actions">
           <button class="log-group-btn" data-group-key="${escapeHtml(k)}">Log all (${g.issues.length})</button>
           <select class="log-group-btn" data-add-group-key="${escapeHtml(k)}">
@@ -1365,11 +1376,12 @@ function diaryActionsHtml(editIds, deleteAttr){
     <button class="icon-btn danger" ${deleteAttr} title="Delete" aria-label="Delete">${ICON_TRASH}</button>
   </div>`;
 }
+let diaryExpandedGroups = new Set();
 function renderDiaryGroup(group){
   if(group.length === 1){
     const l = group[0]; const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry">${diaryCoverEl(iss)}
-      <div class="diary-info"><div class="title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
+      <div class="diary-info"><div class="title"><button type="button" class="title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)} #${iss.number}</button></div>
       <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}${iss.year?' · '+iss.year:''}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
       <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}
@@ -1377,13 +1389,24 @@ function renderDiaryGroup(group){
   }
   const first = group[0];
   const firstIssue = issueById(first.issueId);
+  // When every issue in this batch belongs to the same series, this was a
+  // whole-series log — show the series name rather than a generic count,
+  // and let the user expand the individual issues underneath.
+  const seriesIds = new Set(group.map(l=>{ const i=issueById(l.issueId); return i ? i.seriesId : null; }).filter(Boolean));
   const arcNames = new Set(group.map(l=>{ const i=issueById(l.issueId); return i ? i.arcName : null; }).filter(Boolean));
-  const label = arcNames.size === 1 ? [...arcNames][0] : `${group.length} issues logged together`;
+  const wholeSeries = seriesIds.size === 1 && firstIssue;
+  const label = wholeSeries ? firstIssue.seriesTitle : (arcNames.size === 1 ? [...arcNames][0] : `${group.length} issues logged together`);
   const ids = group.map(l=>l.id).join(',');
+  const groupKey = first.loggedAt;
+  const expanded = diaryExpandedGroups.has(groupKey);
+  const issuesSorted = group.map(l=>({ l, iss: issueById(l.issueId) })).filter(x=>x.iss).sort((a,b)=> a.iss.number-b.iss.number);
   return `<div class="diary-entry">${firstIssue ? diaryCoverEl(firstIssue) : '<div class="diary-cover"></div>'}
-    <div class="diary-info"><div class="title">${escapeHtml(label)}</div>
+    <div class="diary-info"><div class="title">${escapeHtml(label)}
+      <button type="button" class="diary-expand-btn" data-diary-group-toggle="${escapeHtml(groupKey)}">${expanded ? '▲ Hide issues' : `▼ ${group.length} issues`}</button></div>
     <div class="sub">${group.length} issues logged at once</div>
-    ${first.review ? `<div class="review">${escapeHtml(first.review)}</div>` : ''}</div>
+    ${first.review ? `<div class="review">${escapeHtml(first.review)}</div>` : ''}
+    ${expanded ? `<div class="diary-subissues">${issuesSorted.map(({iss})=>`<button type="button" class="diary-subissue-chip" data-issue-title="${iss.id}">#${iss.number}${iss.seriesId!==firstIssue.seriesId?' '+escapeHtml(iss.seriesTitle):''}</button>`).join('')}</div>` : ''}
+    </div>
     <div class="diary-side"><span class="stars">${starsHtml(first.rating)}</span>${fmtDate(first.dateRead)}
       ${diaryActionsHtml(ids, `data-del-batch="${ids}"`)}</div></div>`;
 }
@@ -1393,7 +1416,8 @@ function renderWatchlist(){
   if(state.viewingWatchlistId) return renderWatchlistDetail(state.viewingWatchlistId);
   const listsWithItems = watchlists
     .slice()
-    .sort((a,b)=> (a.is_default?1:0) - (b.is_default?1:0))
+    // most recently created list first; the default "Read Later" holding pen always stays last
+    .sort((a,b)=> (a.is_default?1:0) - (b.is_default?1:0) || (b.created_at||'').localeCompare(a.created_at||''))
     .map(w=>({
       ...w,
       items: watchlistItems.filter(it=>it.watchlist_id===w.id).sort((a,b)=>(a.position||0)-(b.position||0))
@@ -1412,7 +1436,8 @@ function renderWatchlist(){
     <div class="group-block">
       <div class="group-head">
         <h3 data-watchlist-id="${w.id}" style="cursor:pointer;text-decoration:underline">${escapeHtml(w.name)} <span class="n">${w.items.length} issue${w.items.length!==1?'s':''} · ${w.items.filter(it=>isRead(it.issue_id)).length}/${w.items.length} read</span></h3>
-        ${w.is_default ? '' : `<button class="icon-btn danger" data-delete-watchlist="${w.id}" title="Delete this list" aria-label="Delete this list">${ICON_TRASH}</button>`}
+        ${w.is_default ? '' : `<button class="icon-btn" data-rename-watchlist="${w.id}" title="Rename this list" aria-label="Rename this list">${ICON_EDIT}</button>
+        <button class="icon-btn danger" data-delete-watchlist="${w.id}" title="Delete this list" aria-label="Delete this list">${ICON_TRASH}</button>`}
       </div>
       <div class="grid">${w.items.slice(0,6).map(it=>{ const iss=issueById(it.issue_id); return iss?issueCardHtml(iss,{hideQuickAdd:true}):''; }).join('') || '<p class="hint">Empty — add issues here from any issue page.</p>'}</div>
       ${w.items.length > 6 ? `<button class="log-group-btn" data-watchlist-id="${w.id}" style="margin-top:10px">View all ${w.items.length} →</button>` : ''}
@@ -1422,10 +1447,26 @@ function renderWatchlist(){
     <button class="mini-switch${state.watchlistShowUnreadOnly?' on':''}" id="unreadOnlySwitch"><span class="knob"></span></button>
     <span>${state.watchlistShowUnreadOnly ? 'Showing unread only' : 'Showing all issues'}</span>
   </div>
-  ${allIssues.length ? `<div class="grid">${allIssues.map(i=>issueCardHtml(i,{hideQuickAdd:true})).join('')}</div>` : `<div class="empty"><span class="display">Nothing to show</span>${state.watchlistShowUnreadOnly ? 'No unread issues match — try switching the toggle off.' : "Create a list above, then add issues to it from any issue's page."}</div>`}
+  ${allIssues.length ? `<div class="grid">${allIssues.slice(0,6).map(i=>issueCardHtml(i,{hideQuickAdd:true})).join('')}</div>` : `<div class="empty"><span class="display">Nothing to show</span>${state.watchlistShowUnreadOnly ? 'No unread issues match — try switching the toggle off.' : "Create a list above, then add issues to it from any issue's page."}</div>`}
+  ${allIssues.length > 6 ? `<button class="log-group-btn" data-watchlist-id="__all__" style="margin-top:10px">View all ${allIssues.length} →</button>` : ''}
   `;
 }
+function renderAllReadingListIssuesDetail(){
+  let allIssueIds = new Set(watchlistItems.map(it=>it.issue_id));
+  let allIssues = issuesCache.filter(i=>allIssueIds.has(i.id));
+  if(state.watchlistShowUnreadOnly) allIssues = allIssues.filter(i=>!isRead(i.id));
+  return `<div class="section-title"><h2>All reading list issues</h2><span class="count">${allIssues.length} issue${allIssues.length!==1?'s':''}</span></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <button class="log-group-btn" id="backToWatchlist">← Back to Reading List</button>
+  </div>
+  <div class="switch-row" style="margin-bottom:14px">
+    <button class="mini-switch${state.watchlistShowUnreadOnly?' on':''}" id="unreadOnlySwitch"><span class="knob"></span></button>
+    <span>${state.watchlistShowUnreadOnly ? 'Showing unread only' : 'Showing all issues'}</span>
+  </div>
+  ${allIssues.length ? `<div class="grid">${allIssues.map(i=>issueCardHtml(i,{hideQuickAdd:true})).join('')}</div>` : `<div class="empty"><span class="display">Nothing to show</span>${state.watchlistShowUnreadOnly ? 'No unread issues match — try switching the toggle off.' : "Create a list above, then add issues to it from any issue's page."}</div>`}`;
+}
 function renderWatchlistDetail(watchlistId){
+  if(watchlistId === '__all__') return renderAllReadingListIssuesDetail();
   const w = watchlists.find(x=>x.id===watchlistId);
   if(!w) return `<div class="empty"><span class="display">List not found</span></div>`;
   const items = watchlistItems.filter(it=>it.watchlist_id===watchlistId).sort((a,b)=>(a.position||0)-(b.position||0));
@@ -1433,7 +1474,8 @@ function renderWatchlistDetail(watchlistId){
   return `<div class="section-title"><h2>${escapeHtml(w.name)}</h2><span class="count">${items.length} issue${items.length!==1?'s':''} · ${readCount}/${items.length} read</span></div>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
     <button class="log-group-btn" id="backToWatchlist">← Back to Reading List</button>
-    ${w.is_default ? '' : `<button class="log-group-btn" data-delete-watchlist="${watchlistId}">Delete this list</button>`}
+    ${w.is_default ? '' : `<button class="log-group-btn" data-rename-watchlist="${watchlistId}">Rename this list</button>
+    <button class="log-group-btn" data-delete-watchlist="${watchlistId}">Delete this list</button>`}
   </div>
   <p class="hint" style="margin-bottom:10px">Drag the ⠿ handle to reorder.</p>
   ${items.length ? items.map(it=>{
@@ -1442,7 +1484,7 @@ function renderWatchlistDetail(watchlistId){
     const img = hasImg ? `<img class="cover-img" src="${iss.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
     return `<div class="wl-row${isRead(iss.id)?' is-read-row':''}" data-drag-issue="${it.issue_id}">
       <div class="wl-cover" style="--accent:${iss.color}" data-issue="${iss.id}">${img}</div>
-      <div><div class="wl-title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div><div class="wl-sub">${escapeHtml(iss.arcName)}${isRead(iss.id)?' · read':''}</div></div>
+      <div><button type="button" class="wl-title title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)} #${iss.number}</button><div class="wl-sub">${escapeHtml(iss.arcName)}${isRead(iss.id)?' · read':''}</div></div>
       <button class="icon-btn danger" data-remove-watchlist="${watchlistId}|${it.issue_id}" title="Remove from list" aria-label="Remove from list">${ICON_TRASH}</button>
       <span class="drag-handle">⠿</span>
     </div>`;
@@ -1458,7 +1500,7 @@ function renderFriendBlock(userId){
     <div class="row-scroll">${logs.map(l=>{
       const iss = issueById(l.issueId); if(!iss) return '';
       return `<div style="width:150px;flex-shrink:0">${coverEl(iss)}
-        <div class="card-meta"><div class="t">#${iss.number}</div><div class="s">${escapeHtml(iss.seriesTitle)}</div>
+        <div class="card-meta"><div class="t">#${iss.number}</div><button type="button" class="s title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)}</button>
         ${l.rating>0 ? `<div class="stars">${starsHtml(l.rating)}</div>` : ''}
         ${l.review ? `<div style="font-size:11px;margin-top:2px">${escapeHtml(l.review)}</div>` : ''}
         <div style="font-size:10.5px;color:var(--ink-soft);margin-top:2px">${fmtDate(l.dateRead)}</div></div></div>`;
@@ -1513,7 +1555,7 @@ function renderFriendAllReads(userId){
   const logRows = logs.length ? logs.map(l=>{
     const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry">${diaryCoverEl(iss)}
-      <div class="diary-info"><div class="title">${escapeHtml(iss.seriesTitle)} #${iss.number}</div>
+      <div class="diary-info"><div class="title"><button type="button" class="title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)} #${iss.number}</button></div>
       <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}${iss.year?' · '+iss.year:''}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
       <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
@@ -1587,12 +1629,15 @@ function renderStats(){
   const wlIssueIds = nonDefaultWatchlistIssueIds();
   const wlTotal = wlIssueIds.size;
   const wlRead = [...wlIssueIds].filter(id=>isRead(id)).length;
+  const allSeriesIds = new Set(issuesCache.map(i=>i.seriesId));
+  const seriesCompleted = [...allSeriesIds].filter(isSeriesFullyRead).length;
   return `<div class="section-title"><h2>Stats</h2></div>
   <div class="stats-grid">
     <div class="stat-card"><b>${logsCache.length}</b><span>Total reads</span></div>
     <div class="stat-card"><b>${distinctRead}</b><span>Distinct issues</span></div>
     <div class="stat-card"><b>${avg}${avg==='—'?'':'<small style="font-size:0.55em">/5</small>'}</b><span>Average rating</span></div>
     <div class="stat-card"><b>${Object.keys(bySeries).length}</b><span>Series explored</span></div>
+    <div class="stat-card"><b>${seriesCompleted}</b><span>Series fully completed</span></div>
     <div class="stat-card"><b>${wlTotal ? wlRead+'/'+wlTotal : '—'}</b><span>Reading list read</span></div>
     <div class="stat-card"><b style="font-size:20px">${topHeroes.length ? escapeHtml(topHeroes[0][0]) : '—'}</b><span>Favorite hero</span></div>
   </div>
@@ -1726,10 +1771,31 @@ function attachMainEvents(){
     if(!w || !confirm(`Delete the list "${w.name}"? The issues themselves stay in the catalog.`)) return;
     if(await deleteWatchlist(w.id)){ if(state.viewingWatchlistId===w.id) state.viewingWatchlistId = null; await refreshWatchlistsAndRender(); }
   }));
+  document.querySelectorAll('[data-rename-watchlist]').forEach(el=> el.addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    const w = watchlists.find(x=>x.id===el.dataset.renameWatchlist);
+    if(!w) return;
+    const name = window.prompt('Rename this list:', w.name);
+    if(!name || !name.trim() || name.trim() === w.name) return;
+    if(await renameWatchlist(w.id, name.trim())) await refreshWatchlistsAndRender();
+  }));
   document.querySelectorAll('[data-del-batch]').forEach(el=> el.addEventListener('click', async ()=>{
     if(!confirm('Delete all the entries of this group?')) return;
     const ids = el.dataset.delBatch.split(',');
     if(await deleteLogsBatch(ids)) refreshLogsAndRender();
+  }));
+  document.querySelectorAll('[data-diary-group-toggle]').forEach(el=> el.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const key = el.dataset.diaryGroupToggle;
+    if(diaryExpandedGroups.has(key)) diaryExpandedGroups.delete(key); else diaryExpandedGroups.add(key);
+    render();
+  }));
+  // Every comic TITLE shown anywhere (diary, reading list, friend cards…) opens
+  // the same rate/info pop-up too — not just the cover — one consistent way in,
+  // wherever an issue is displayed.
+  document.querySelectorAll('[data-issue-title]').forEach(el=> el.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    openModal(el.dataset.issueTitle);
   }));
   const fsi = document.getElementById('friendSearchInput');
   if(fsi) fsi.addEventListener('input', async e=>{
@@ -2152,6 +2218,10 @@ function renderModal(){
   document.getElementById('tmSeriesLink').addEventListener('click', ()=>{
     closeModal();
     state.search = issue.seriesTitle;
+    // also pin the year filter to this issue's year — several runs can
+    // share the exact same series title (e.g. several "Moon Knight"),
+    // so the title alone wouldn't land on the right one.
+    if(issue.year){ state.filterYearFrom = String(issue.year); state.filterYearTo = String(issue.year); }
     state.browsePage = 1; browseExpandedGroups.clear();
     const si = document.getElementById('searchInput'); if(si) si.value = issue.seriesTitle;
     setTab('browse');
