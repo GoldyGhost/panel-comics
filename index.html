@@ -288,7 +288,6 @@
     display: flex; flex-direction: column;
     max-height: 92vh; overflow-y: auto;
     padding: 0; border: 5px solid var(--ink); border-radius: 0;
-    box-shadow: 14px 14px 0 #000;
     background: var(--paper);
     background-image: radial-gradient(circle, var(--line) 1.5px, transparent 1.5px);
     background-size: 12px 12px;
@@ -379,11 +378,6 @@
     font-family: 'Bangers', sans-serif; color: #fff; text-align: center; font-size: 18px;
     text-shadow: 2px 2px 0 rgba(0,0,0,0.4); transform: rotate(2.5deg);
   }
-  .tm-rate .tm-cover-badge {
-    position: absolute; bottom: 8px; right: 8px; background: var(--gold); color: var(--ink);
-    font-size: 10.5px; font-weight: 800; letter-spacing: 0.03em; padding: 4px 8px;
-    border: 2px solid var(--ink); transform: rotate(-2.5deg);
-  }
   .tm-rate .tm-roundel {
     position: absolute; top: -10px; left: -10px; width: 42px; height: 42px; border-radius: 50%;
     background: var(--gold); border: 3px solid var(--ink); display: flex; align-items: center; justify-content: center;
@@ -398,15 +392,11 @@
   }
   .tm-rate .tm-caption .tm-year { font-size: 11px; font-weight: 700; color: var(--ink); opacity: 0.75; }
   .tm-rate .tm-caption .tm-series-line {
-    font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 17px; color: var(--red);
-    -webkit-text-stroke: 0.6px var(--ink); line-height: 1.2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 22px; color: #fff;
+    text-shadow: 2px 2px 0 var(--ink); line-height: 1.2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
   }
-  .tm-rate .tm-series-link { color: inherit; background: none; border: none; padding: 0; font: inherit; -webkit-text-stroke: inherit; cursor: pointer; text-align: left; }
+  .tm-rate .tm-series-link { color: inherit; background: none; border: none; padding: 0; font: inherit; text-shadow: inherit; cursor: pointer; text-align: left; }
   .tm-rate .tm-series-link:hover { text-decoration: underline; }
-  .tm-rate .tm-series-arrow {
-    display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
-    background: var(--blue); color: #fff; font-size: 10px; flex-shrink: 0; -webkit-text-stroke: 0;
-  }
 
   /* ---- meta ---- */
   .tm-rate .tm-meta { grid-area: meta; display: grid; grid-template-columns: repeat(2,1fr); gap: 8px 14px; margin: 0; background: #fff; color: #1B160F; border: 2px solid var(--ink); padding: 10px 12px; }
@@ -429,7 +419,6 @@
     background: var(--paper-2); color: var(--ink); transform: rotate(-2deg); display: inline-block;
   }
   .tm-rate .tm-onomatopoeia.tm-hot { background: var(--red); color: #fff; }
-  .tm-rate .tm-rating-num { font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
 
   /* ---- review bubble ---- */
   .tm-rate .tm-review { grid-area: review; margin-top: 14px; }
@@ -441,12 +430,13 @@
   }
   .tm-rate .tm-bubble {
     background: #fff; color: #1B160F; border: 3px solid var(--ink);
-    border-radius: 46% 54% 50% 50% / 38% 40% 60% 62%;
-    padding: 20px 16px 10px; box-shadow: 4px 4px 0 rgba(0,0,0,0.18);
+    border-radius: 26px 30px 28px 32px / 22px 24px 30px 26px;
+    padding: 20px 22px 14px; box-shadow: 4px 4px 0 rgba(0,0,0,0.18);
   }
   .tm-rate .tm-bubble textarea {
     width: 100%; min-height: 90px; border: none; background: transparent; color: #1B160F; resize: vertical;
     font-family: 'Comic Neue', 'Inter', sans-serif; font-weight: 700; text-transform: uppercase; font-size: 13.5px;
+    display: block;
   }
   .tm-rate .tm-bubble textarea:focus { outline: none; }
   .tm-rate .tm-bubble-count { text-align: right; font-size: 10.5px; color: var(--ink-soft); margin-top: 2px; font-family: 'Inter', sans-serif; text-transform: none; }
@@ -492,24 +482,28 @@
   .tm-rate .tm-friends-count {
     background: var(--gold); color: var(--ink); font-size: 10.5px; font-weight: 800; padding: 3px 9px; border: 2px solid var(--ink);
   }
-  .tm-rate .tm-friends-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 14px; }
+  .tm-rate .tm-friends-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 14px; }
   @media (min-width: 640px) { .tm-rate .tm-friends-grid { grid-template-columns: repeat(2,1fr); } }
   @media (min-width: 1024px) { .tm-rate .tm-friends-grid { grid-template-columns: repeat(3,1fr); } }
-  .tm-rate .tm-friend-card { border: 2px solid var(--ink); background: var(--paper-2); padding: 10px; }
-  .tm-rate .tm-friend-top { display: flex; align-items: center; gap: 8px; }
+  .tm-rate .tm-friend-card { border: 2px solid var(--ink); background: var(--paper-2); padding: 7px 8px; }
+  .tm-rate .tm-friend-top { display: flex; align-items: center; gap: 6px; }
   .tm-rate .tm-friend-avatar {
-    width: 30px; height: 30px; border-radius: 50%; background: var(--blue); color: #fff; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; border: 2px solid var(--ink);
+    width: 24px; height: 24px; border-radius: 50%; background: var(--blue); color: #fff; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; border: 2px solid var(--ink);
   }
-  .tm-rate .tm-friend-name { background: none; border: none; padding: 0; font-weight: 700; font-size: 12.5px; color: var(--ink); cursor: pointer; text-align: left; }
+  .tm-rate .tm-friend-name { background: none; border: none; padding: 0; font-weight: 700; font-size: 11.5px; color: var(--ink); cursor: pointer; text-align: left; }
   .tm-rate .tm-friend-name:hover { text-decoration: underline; }
-  .tm-rate .tm-friend-date { font-size: 10.5px; color: var(--ink-soft); margin-left: auto; white-space: nowrap; }
-  .tm-rate .tm-friend-stars { margin: 6px 0; }
-  .tm-rate .tm-friend-stars .star-svg { width: 14px; height: 14px; }
+  .tm-rate .tm-friend-date { font-size: 10px; color: var(--ink-soft); margin-left: auto; white-space: nowrap; }
+  .tm-rate .tm-friend-stars { margin: 4px 0; display: flex; align-items: center; gap: 5px; }
+  .tm-rate .tm-friend-stars .star-svg { width: 12px; height: 12px; }
+  .tm-rate .tm-friend-series-tag {
+    font-family: 'Inter', sans-serif; font-weight: 700; font-size: 8.5px; letter-spacing: 0.04em;
+    color: var(--ink-soft); text-transform: uppercase; border: 1px solid var(--ink-soft); border-radius: 3px; padding: 1px 4px;
+  }
   .tm-rate .tm-friend-bubble {
     background: #fff; color: #1B160F; border-radius: 40% 60% 55% 45% / 45% 40% 60% 55%;
-    border: 2px solid var(--ink); padding: 10px 12px; font-family: 'Comic Neue', sans-serif; font-weight: 700;
-    text-transform: uppercase; font-size: 11.5px; line-height: 1.35;
+    border: 2px solid var(--ink); padding: 8px 10px; font-family: 'Comic Neue', sans-serif; font-weight: 700;
+    text-transform: uppercase; font-size: 11px; line-height: 1.3;
   }
   .tm-rate .tm-friend-bubble p { margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
   .tm-rate .tm-friend-bubble.tm-expanded p { -webkit-line-clamp: unset; }
@@ -1941,11 +1935,13 @@ function openModal(issueId){
   modalEl.setAttribute('aria-modal', 'true');
   modalEl.setAttribute('aria-labelledby', 'tmModalTitle');
   document.getElementById('overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
   renderModal();
   tmTrapFocus();
 }
 function closeModal(){
   document.getElementById('overlay').classList.remove('open');
+  document.body.style.overflow = '';
   const modalEl = document.getElementById('modal');
   modalEl.classList.remove('tm-rate');
   modalEl.removeAttribute('role');
@@ -1994,7 +1990,6 @@ function tmCoverHtml(issue){
   if(issue.coverUrl){
     return `<button type="button" class="tm-cover" id="tmCover" style="--accent:${issue.color}" aria-label="Enlarge cover">
       <img class="cover-img" src="${issue.coverUrl}" alt="" loading="lazy" onerror="this.remove()">
-      <span class="tm-cover-badge">🔍 ENLARGE</span>
     </button>`;
   }
   return `<div class="tm-cover tm-cover--noimg" style="--accent:${issue.color}"><span>${escapeHtml(issue.seriesTitle)}</span></div>`;
@@ -2018,13 +2013,23 @@ function tmFriendsSection(){
   const body = entries.length ? `<div class="tm-friends-grid">${entries.map(l=>{
     const p = followingProfiles[l.userId] || followerProfiles[l.userId];
     const uname = p ? p.username : 'someone';
+    // This issue's own log has no rating — if it was logged as part of a
+    // whole-series batch (same user, same loggedAt) and a sibling issue in
+    // that same batch does carry a rating, show that series rating instead
+    // of leaving the card blank.
+    let displayRating = l.rating;
+    let seriesFallback = false;
+    if(!(displayRating > 0)){
+      const sibling = friendsLogsCache.find(s=> s.userId===l.userId && s.loggedAt===l.loggedAt && s.issueId!==l.issueId && s.rating > 0);
+      if(sibling){ displayRating = sibling.rating; seriesFallback = true; }
+    }
     return `<div class="tm-friend-card">
       <div class="tm-friend-top">
         <div class="tm-friend-avatar">${escapeHtml(uname.charAt(0).toUpperCase())}</div>
         <button type="button" class="tm-friend-name" data-tm-friend-user="${l.userId}">@${escapeHtml(uname)}</button>
         <div class="tm-friend-date">${fmtDate(l.dateRead)}</div>
       </div>
-      <div class="tm-friend-stars">${starsHtml(l.rating)}</div>
+      ${displayRating > 0 ? `<div class="tm-friend-stars">${starsHtml(displayRating)}${seriesFallback ? '<span class="tm-friend-series-tag">SERIES</span>' : ''}</div>` : ''}
       ${l.review ? `<div class="tm-friend-bubble" id="tmfb-${l.id}"><p>${escapeHtml(l.review)}</p><button type="button" class="tm-friend-readmore" data-tm-readmore="${l.id}">READ MORE</button></div>` : ''}
     </div>`;
   }).join('')}</div>` : `<div class="tm-friends-empty">NONE OF YOUR FRIENDS HAVE LOGGED THIS ONE YET…</div>`;
@@ -2034,8 +2039,6 @@ function tmUpdateRatingDisplay(){
   const ono = tmOnomatopoeia(modalRating);
   const onoEl = document.getElementById('tmOno');
   if(onoEl){ onoEl.textContent = ono.text; onoEl.classList.toggle('tm-hot', ono.hot); }
-  const numEl = document.getElementById('tmRatingNum');
-  if(numEl) numEl.textContent = modalRating ? (modalRating/2).toFixed(1)+' / 5' : '';
 }
 function tmEnhanceStarA11y(){
   const wrap = document.getElementById('tmStarPicker');
@@ -2105,7 +2108,7 @@ function renderModal(){
           ${issue.year ? `<div class="tm-year">${issue.year}</div>` : ''}
           <div class="tm-series-line">
             <button type="button" class="tm-series-link" id="tmSeriesLink">${escapeHtml((issue.seriesTitle||'').toUpperCase())}</button>
-            <span class="tm-series-arrow">›</span> #${issue.number}
+            #${issue.number}
           </div>
         </div>
         ${tmMetaHtml(issue)}
@@ -2113,7 +2116,6 @@ function renderModal(){
           <div class="tm-rating-row">
             <div class="tm-star-picker">${starPickerHtml('tmStarPicker')}</div>
             <span class="tm-onomatopoeia${ono.hot?' tm-hot':''}" id="tmOno">${ono.text}</span>
-            <span class="tm-rating-num" id="tmRatingNum">${modalRating ? (modalRating/2).toFixed(1)+' / 5' : ''}</span>
           </div>
         </div>
         <div class="tm-review">
