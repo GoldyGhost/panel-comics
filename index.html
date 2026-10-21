@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Ask the browser to always revalidate this page with the server instead of
+     serving a stale copy from disk cache — this is what mobile browsers (and
+     especially iOS Safari in "Add to Home Screen" mode) tend to do more
+     aggressively than desktop. Only a request header, no extra download. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Tomics — Comics Reading Log</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#C8202A">
@@ -92,6 +99,10 @@
   @media (max-width: 639.98px) { .row-preview { grid-template-columns: repeat(3,1fr); gap: 10px; } }
   @media (min-width: 640px) and (max-width: 1023.98px) { .row-preview { grid-template-columns: repeat(5,1fr); } }
   .grid .issue-card, .row-preview .issue-card { height: 100%; }
+  /* Caption under a .row-preview card (username, list name…): forced to one
+     line so it can never need more vertical space than reserved for it,
+     which is what was letting the next row's covers run over it. */
+  .row-preview-label { font-size: 11px; color: var(--ink-soft); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; -webkit-touch-callout: none; user-select: none; }
   .cover:hover { box-shadow: 6px 6px 0 var(--hover-shadow); }
   .cover::before { content: ""; position: absolute; inset: 0; background-image: repeating-radial-gradient(circle at 6px 6px, rgba(255,255,255,0.35) 0 1.4px, transparent 1.6px 8px); mix-blend-mode: overlay; opacity: 0.55; z-index: 1; }
@@ -569,7 +580,7 @@
   </header>
   <main id="main"></main>
   <footer>Tomics — connected to your Supabase database. Each account has its own diary; the issue catalog is shared.<br>
-  Cover art and issue data courtesy of Marvel / <a href="https://comicvine.gamespot.com" target="_blank" rel="noopener">Comic Vine</a>. MARVEL and all related characters are trademarks of Marvel Characters, Inc. Tomics is an unofficial, non-commercial fan project for personal use, not affiliated with, endorsed by, or sponsored by Marvel.</footer>
+  Cover art and issue data courtesy of Marvel / <a href="https://comicvine.gamespot.com" target="_blank" rel="noopener">Comic Vine</a>. MARVEL and all related characters are trademarks of Marvel Characters, Inc. Tomics is an unofficial, non-commercial fan project for personal use, not affiliated with, endorsed by, or sponsored by Marvel.<span id="appVersion"></span></footer>
 </div>
 
 <div id="authScreen" class="auth-wrap" style="display:none">
@@ -608,6 +619,13 @@
 <script>
 (function(){
 "use strict";
+
+/* ---------------- VERSION ---------------- */
+// Bump this on every deploy (any string works — a date, a counter…). Shown
+// in the footer so you can check at a glance, from any device, whether it's
+// actually running the version you just pushed.
+const APP_VERSION = "2026.10.21-1";
+(function(){ const el = document.getElementById('appVersion'); if(el) el.textContent = ' · v' + APP_VERSION; })();
 
 /* ---------------- CONFIG / SUPABASE CLIENT ---------------- */
 const cfg = window.PANEL_CONFIG || {};
@@ -1274,7 +1292,8 @@ function computeFriendsRecent(cap){
 function friendRecentCardHtml(log){
   const iss = issueById(log.issueId); if(!iss) return '';
   const p = followingProfiles[log.userId] || followerProfiles[log.userId];
-  return `<div>${issueCardHtml(iss)}<div style="font-size:11px;color:var(--ink-soft);margin-top:4px;cursor:pointer;text-decoration:underline" data-friend-user="${log.userId}">@${escapeHtml(p?p.username:'someone')}</div></div>`;
+  const uname = p?p.username:'someone';
+  return `<div>${issueCardHtml(iss)}<div class="row-preview-label" style="cursor:pointer;text-decoration:underline" title="@${escapeHtml(uname)}" data-friend-user="${log.userId}">@${escapeHtml(uname)}</div></div>`;
 }
 
 function nonDefaultWatchlistIssueIds(){
@@ -1300,7 +1319,7 @@ function renderHome(){
       <div class="stat"><b>${wlTotal ? wlRead+'/'+wlTotal : '—'}</b><span>Reading list read</span></div>
     </div></div>
   ${continueLists.length ? `<div class="section-title"><h2>Continue the reading list</h2><span class="count">next up in each list</span></div>
-  <div class="row-preview">${continueLists.map(({issue,listName})=>`<div>${issueCardHtml(issue)}<div style="font-size:11px;color:var(--ink-soft);margin-top:4px">${escapeHtml(listName)}</div></div>`).join('')}</div>` : ''}
+  <div class="row-preview">${continueLists.map(({issue,listName})=>`<div>${issueCardHtml(issue)}<div class="row-preview-label" title="${escapeHtml(listName)}">${escapeHtml(listName)}</div></div>`).join('')}</div>` : ''}
   ${friendsRecent.length ? `<div class="section-title"><h2>Friends' recent reads</h2></div>
   <div class="row-preview">${friendsRecent.map(friendRecentCardHtml).join('')}</div>` : ''}
   ${recentLogs.length ? `<div class="section-title"><h2>Recent reads</h2></div>
@@ -1927,11 +1946,26 @@ function attachMainEvents(){
 document.addEventListener('click', ()=> document.querySelectorAll('.quick-add-menu.open').forEach(m=>m.classList.remove('open')));
 window.addEventListener('scroll', ()=> document.querySelectorAll('.quick-add-menu.open').forEach(m=>m.classList.remove('open')), true);
 let resizeDebounceTimer = null;
+let lastPreviewCount = previewCount();
+let lastGroupIssueCap = groupIssueCap();
 window.addEventListener('resize', ()=>{
   clearTimeout(resizeDebounceTimer);
-  // Several tabs now size their preview rows (.row-preview) off window width,
-  // not just Browse, so any tab may need to re-render on a breakpoint change.
-  resizeDebounceTimer = setTimeout(render, 200);
+  resizeDebounceTimer = setTimeout(()=>{
+    // Mobile browsers fire 'resize' on scroll itself (the address bar/toolbar
+    // collapsing and expanding changes window height), with no breakpoint
+    // actually crossed. A full render() there would tear down and rebuild
+    // every <img>, which is exactly the "covers flashing while scrolling" bug.
+    // Only re-render when the preview row count (.row-preview) actually
+    // changes — i.e. a real phone/tablet/desktop breakpoint was crossed —
+    // or, for Browse, when its own (width-based) issue cap changes.
+    const pc = previewCount();
+    const browseCapChanged = state.tab==='browse' && groupIssueCap() !== lastGroupIssueCap;
+    if(pc !== lastPreviewCount || browseCapChanged){
+      lastPreviewCount = pc;
+      lastGroupIssueCap = groupIssueCap();
+      render();
+    }
+  }, 200);
 });
 function attachTouchReorder(){
   let sourceRow = null, sourceId = null, lastTarget = null;
