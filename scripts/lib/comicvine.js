@@ -8,20 +8,31 @@
 //     volumes, volume, search…) and pauses on its own before reaching
 //     the quota, instead of crashing;
 //   - enforces a minimum gap between any two requests;
-//   - if a 420/429/107 still happens, waits a flat 1 hour and retries
-//     the SAME request (no progressive backoff);
+//   - if a 420/429/107 still happens, waits 30 min flat and retries
+//     the SAME request (no progressive backoff) — plusieurs clés API
+//     n'aident pas ici, Comic Vine applique ce blocage par IP, pas par
+//     clé (vérifié en pratique le 12/10/2026), donc on se contente
+//     d'UNE seule clé et d'une pause plus courte ;
 //   - retries transient network errors;
 //   - caches identical requests during a run (same volume listed once,
 //     not once per storyline).
 // ============================================================
 
-const API_KEY = process.env.COMICVINE_API_KEY;
+const API_KEY = (process.env.COMICVINE_API_KEYS || process.env.COMICVINE_API_KEY || "")
+  .split(",")[0]
+  .trim();
+
+if (!API_KEY) {
+  throw new Error("Aucune clé Comic Vine trouvée. Renseigne COMICVINE_API_KEY dans .env.");
+}
+
 const BASE_URL = "https://comicvine.gamespot.com/api";
 const HEADERS = { "User-Agent": "PANEL-comics-log/1.0 (contact: ton-email@example.com)" };
 
 const MAX_PER_HOUR = 170;      // official limit is 200; keep a safety margin
 const MIN_INTERVAL_MS = 1100;  // stay under the per-second velocity detection
 const HOUR_MS = 60 * 60 * 1000;
+const RATE_LIMIT_PAUSE_MS = 30 * 60 * 1000; // 30 min, pas 1h
 const MAX_RATE_RETRIES = 6;
 const MAX_NETWORK_RETRIES = 4;
 const MAX_SERVER_RETRIES = 6;
@@ -83,11 +94,12 @@ export async function cvGet(path, params = "") {
 
     const rateLimited = res.status === 420 || res.status === 429 || (json && json.status_code === 107);
     if (rateLimited) {
+      const detail = `HTTP ${res.status}${json ? `, status_code ${json.status_code}` : ""}${json && json.error ? `, "${json.error}"` : ""}`;
       if (++rateAttempts > MAX_RATE_RETRIES) {
         throw new Error(`Comic Vine limite de débit persistante sur ${path} — réessaie plus tard.`);
       }
-      console.log(`  ⏸  Limite Comic Vine atteinte — pause fixe d'1h (reprise vers ${clock(Date.now() + 60 * 60000)}), puis on réessaie.`);
-      await sleep(60 * 60000 * WAIT_SCALE);
+      console.log(`  ⏸  Limite Comic Vine atteinte (${detail}) — pause fixe de 30 min (reprise vers ${clock(Date.now() + RATE_LIMIT_PAUSE_MS)}), puis on réessaie.`);
+      await sleep(RATE_LIMIT_PAUSE_MS * WAIT_SCALE);
       windows.set(bucket, []); // start counting afresh after the pause
       continue;
     }

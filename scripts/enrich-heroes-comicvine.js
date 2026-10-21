@@ -23,11 +23,14 @@
 import { createClient } from "@supabase/supabase-js";
 import { cvGet, sleep } from "./lib/comicvine.js";
 
-const COMICVINE_API_KEY = process.env.COMICVINE_API_KEY;
+// La clé Comic Vine elle-même est lue par lib/comicvine.js (COMICVINE_API_KEYS,
+// une ou plusieurs clés séparées par des virgules — seule la 1ère est utilisée) —
+// on vérifie juste ici qu'au moins une des deux variantes est renseignée.
+const HAS_COMICVINE_KEY = !!(process.env.COMICVINE_API_KEYS || process.env.COMICVINE_API_KEY);
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!COMICVINE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+if (!HAS_COMICVINE_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error("Missing environment variables. Copy .env.example to .env and fill it in.");
   process.exit(1);
 }
