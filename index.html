@@ -98,7 +98,12 @@
   .row-preview { display: grid; grid-template-columns: repeat(7,1fr); gap: 16px; margin-bottom: 30px; }
   @media (max-width: 639.98px) { .row-preview { grid-template-columns: repeat(3,1fr); gap: 10px; } }
   @media (min-width: 640px) and (max-width: 1023.98px) { .row-preview { grid-template-columns: repeat(5,1fr); } }
-  .grid .issue-card, .row-preview .issue-card { height: 100%; }
+  .grid .issue-card { height: 100%; }
+  /* .row-preview items carry an extra caption (username/list name) below the
+     card — NOT stretching .issue-card to 100% here, and sizing rows to
+     min-content, are both needed so the grid's row height actually accounts
+     for that caption instead of the next row starting right over it. */
+  .row-preview { grid-auto-rows: min-content; align-items: start; }
   /* Caption under a .row-preview card (username, list name…): forced to one
      line so it can never need more vertical space than reserved for it,
      which is what was letting the next row's covers run over it. */
@@ -624,7 +629,7 @@
 // Bump this on every deploy (any string works — a date, a counter…). Shown
 // in the footer so you can check at a glance, from any device, whether it's
 // actually running the version you just pushed.
-const APP_VERSION = "2026.10.21-2";
+const APP_VERSION = "2026.10.21-3";
 (function(){ const el = document.getElementById('appVersion'); if(el) el.textContent = ' · v' + APP_VERSION; })();
 
 /* ---------------- CONFIG / SUPABASE CLIENT ---------------- */
