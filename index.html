@@ -788,10 +788,16 @@ async function fetchIssues(){
   }
   return all.map(r=>({
     id:r.id, seriesId:r.series_id, seriesTitle:r.series_title, color:r.color,
-    runName:r.run_name, arcName:r.arc_name, number:r.number, year:r.year,
+    runName:r.run_name, arcName:r.arc_name, number:r.number, numberLabel:r.number_label, year:r.year,
     writer:r.writer, artist:r.artist, custom:r.custom, coverUrl:r.cover_url
   }));
 }
+// Most issues are cleanly numbered and display as "#" + number. A few
+// (Comic Vine bonus/alternate chapters like "10AI", "10AU", "AU", "NOW"…)
+// can't be represented as a plain number without colliding with another
+// issue, so the import keeps the original string in number_label — show
+// that instead whenever it's set.
+function fmtIssueNumber(issue){ return issue.numberLabel || issue.number; }
 async function fetchLogs(){
   // RLS returns own logs + logs of followed users.
   const { data, error } = await sb.from('logs').select('*').order('date_read', { ascending:false });
@@ -1126,7 +1132,7 @@ function issueCardHtml(issue, opts){
   const rated = ls.filter(l=>l.rating>0);
   const avg = rated.length ? Math.round(rated.reduce((a,l)=>a+l.rating,0)/rated.length) : null;
   return `<div class="issue-card">${coverEl(issue)}<div class="card-meta">
-    <div class="t">#${issue.number}</div><button type="button" class="s title-link" data-issue-title="${issue.id}">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</button>
+    <div class="t">#${fmtIssueNumber(issue)}</div><button type="button" class="s title-link" data-issue-title="${issue.id}">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</button>
     ${avg!=null ? `<div class="stars">${starsHtml(avg)}</div>` : ''}
     ${hideQuickAdd ? '' : `<button class="quick-add-btn" data-quick-add-toggle="${issue.id}" title="Add to a list" aria-label="Add to a list">⋯</button>${quickAddMenuHtml(issue.id)}`}
   </div></div>`;
@@ -1151,7 +1157,7 @@ function filteredIssues(){
       list = list.filter(i => i.number === num);
     } else {
       const q = normSearch(raw);
-      list = list.filter(i => normSearch(i.seriesTitle+' '+i.writer+' '+i.artist+' '+i.arcName+' '+i.runName+' #'+i.number).includes(q));
+      list = list.filter(i => normSearch(i.seriesTitle+' '+i.writer+' '+i.artist+' '+i.arcName+' '+i.runName+' #'+i.number+' '+(i.numberLabel||'')).includes(q));
     }
   }
   if(state.filterYearFrom) list = list.filter(i => i.year && i.year >= parseInt(state.filterYearFrom,10));
@@ -1381,7 +1387,7 @@ function renderDiaryGroup(group){
   if(group.length === 1){
     const l = group[0]; const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry">${diaryCoverEl(iss)}
-      <div class="diary-info"><div class="title"><button type="button" class="title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)} #${iss.number}</button></div>
+      <div class="diary-info"><div class="title"><button type="button" class="title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)} #${fmtIssueNumber(iss)}</button></div>
       <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}${iss.year?' · '+iss.year:''}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
       <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}
@@ -1405,7 +1411,7 @@ function renderDiaryGroup(group){
       <button type="button" class="diary-expand-btn" data-diary-group-toggle="${escapeHtml(groupKey)}">${expanded ? '▲ Hide issues' : `▼ ${group.length} issues`}</button></div>
     <div class="sub">${group.length} issues logged at once</div>
     ${first.review ? `<div class="review">${escapeHtml(first.review)}</div>` : ''}
-    ${expanded ? `<div class="diary-subissues">${issuesSorted.map(({iss})=>`<button type="button" class="diary-subissue-chip" data-issue-title="${iss.id}">#${iss.number}${iss.seriesId!==firstIssue.seriesId?' '+escapeHtml(iss.seriesTitle):''}</button>`).join('')}</div>` : ''}
+    ${expanded ? `<div class="diary-subissues">${issuesSorted.map(({iss})=>`<button type="button" class="diary-subissue-chip" data-issue-title="${iss.id}">#${fmtIssueNumber(iss)}${iss.seriesId!==firstIssue.seriesId?' '+escapeHtml(iss.seriesTitle):''}</button>`).join('')}</div>` : ''}
     </div>
     <div class="diary-side"><span class="stars">${starsHtml(first.rating)}</span>${fmtDate(first.dateRead)}
       ${diaryActionsHtml(ids, `data-del-batch="${ids}"`)}</div></div>`;
@@ -1484,7 +1490,7 @@ function renderWatchlistDetail(watchlistId){
     const img = hasImg ? `<img class="cover-img" src="${iss.coverUrl}" alt="" loading="lazy" onerror="this.remove()">` : '';
     return `<div class="wl-row${isRead(iss.id)?' is-read-row':''}" data-drag-issue="${it.issue_id}">
       <div class="wl-cover" style="--accent:${iss.color}" data-issue="${iss.id}">${img}</div>
-      <div><button type="button" class="wl-title title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)} #${iss.number}</button><div class="wl-sub">${escapeHtml(iss.arcName)}${isRead(iss.id)?' · read':''}</div></div>
+      <div><button type="button" class="wl-title title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)} #${fmtIssueNumber(iss)}</button><div class="wl-sub">${escapeHtml(iss.arcName)}${isRead(iss.id)?' · read':''}</div></div>
       <button class="icon-btn danger" data-remove-watchlist="${watchlistId}|${it.issue_id}" title="Remove from list" aria-label="Remove from list">${ICON_TRASH}</button>
       <span class="drag-handle">⠿</span>
     </div>`;
@@ -1500,7 +1506,7 @@ function renderFriendBlock(userId){
     <div class="row-scroll">${logs.map(l=>{
       const iss = issueById(l.issueId); if(!iss) return '';
       return `<div style="width:150px;flex-shrink:0">${coverEl(iss)}
-        <div class="card-meta"><div class="t">#${iss.number}</div><button type="button" class="s title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)}</button>
+        <div class="card-meta"><div class="t">#${fmtIssueNumber(iss)}</div><button type="button" class="s title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)}</button>
         ${l.rating>0 ? `<div class="stars">${starsHtml(l.rating)}</div>` : ''}
         ${l.review ? `<div style="font-size:11px;margin-top:2px">${escapeHtml(l.review)}</div>` : ''}
         <div style="font-size:10.5px;color:var(--ink-soft);margin-top:2px">${fmtDate(l.dateRead)}</div></div></div>`;
@@ -1555,7 +1561,7 @@ function renderFriendAllReads(userId){
   const logRows = logs.length ? logs.map(l=>{
     const iss = issueById(l.issueId); if(!iss) return '';
     return `<div class="diary-entry">${diaryCoverEl(iss)}
-      <div class="diary-info"><div class="title"><button type="button" class="title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)} #${iss.number}</button></div>
+      <div class="diary-info"><div class="title"><button type="button" class="title-link" data-issue-title="${iss.id}">${escapeHtml(iss.seriesTitle)} #${fmtIssueNumber(iss)}</button></div>
       <div class="sub">${escapeHtml(iss.arcName)} · ${escapeHtml(iss.writer)}${iss.year?' · '+iss.year:''}</div>
       ${l.review ? `<div class="review">${escapeHtml(l.review)}</div>` : ''}</div>
       <div class="diary-side"><span class="stars">${starsHtml(l.rating)}</span>${fmtDate(l.dateRead)}</div></div>`;
@@ -2167,14 +2173,14 @@ function renderModal(){
       ${existing ? `<div class="tm-badge-logged">✓ ALREADY LOGGED · ${fmtDate(existing.dateRead)} — EDIT BELOW</div>` : ''}
       <div class="tm-grid">
         <div class="tm-cover-col">
-          <div class="tm-roundel">#${issue.number}</div>
+          <div class="tm-roundel">#${fmtIssueNumber(issue)}</div>
           ${tmCoverHtml(issue)}
         </div>
         <div class="tm-caption">
           ${issue.year ? `<div class="tm-year">${issue.year}</div>` : ''}
           <div class="tm-series-line">
             <button type="button" class="tm-series-link" id="tmSeriesLink">${escapeHtml((issue.seriesTitle||'').toUpperCase())}</button>
-            #${issue.number}
+            #${fmtIssueNumber(issue)}
           </div>
         </div>
         ${tmMetaHtml(issue)}
@@ -2301,7 +2307,7 @@ function renderEditModal(first){
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
     <div class="modal-head splash">
-      <h3>${many ? editLogIds.length+' issues logged together' : iss ? escapeHtml(iss.seriesTitle)+' #'+iss.number : 'Edit log'}</h3>
+      <h3>${many ? editLogIds.length+' issues logged together' : iss ? escapeHtml(iss.seriesTitle)+' #'+fmtIssueNumber(iss) : 'Edit log'}</h3>
       <div class="sub">Edit your log from ${fmtDate(first.dateRead)}${many ? ' — changes apply to all of them' : ''}</div>
       ${!many && iss ? modalCoverEl(iss) : ''}
     </div>
