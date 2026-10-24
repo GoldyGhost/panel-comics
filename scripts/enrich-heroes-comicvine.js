@@ -182,7 +182,11 @@ async function fetchRows(includeChecked) {
   let from = 0;
   const PAGE = 1000;
   while (true) {
-    let q = supabase.from("issues").select("id, series_title, run_name, number, year").range(from, from + PAGE - 1);
+    // series_title/run_name ne sont plus des colonnes de `issues` depuis la
+    // migration series/runs/arcs (2026-10-24) : lus ici via la vue de
+    // compatibilité `issues_view`, en lecture seule — ce script n'écrit
+    // jamais ces champs, seulement issues.heroes_checked (via markChecked).
+    let q = supabase.from("issues_view").select("id, series_title, run_name, number, year").range(from, from + PAGE - 1);
     if (!includeChecked) q = q.eq("heroes_checked", false);
     const { data, error } = await q;
     if (error) throw error;

@@ -36,6 +36,7 @@
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { cvGet, sleep } from "./lib/comicvine.js";
+import { getOrCreateArc } from "./lib/taxonomy.js";
 
 const HAS_COMICVINE_KEY = !!(process.env.COMICVINE_API_KEYS || process.env.COMICVINE_API_KEY);
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -79,7 +80,11 @@ async function fetchAllIssues(seriesFilter) {
   let from = 0;
   const PAGE = 1000;
   while (true) {
-    let q = supabase.from("issues").select("id, series_title, arc_name, number, year").like("id", "cv-%").range(from, from + PAGE - 1);
+    // series_title/arc_name ne sont plus des colonnes de `issues` depuis la
+    // migration series/runs/arcs (2026-10-24) — lus ici via la vue de
+    // compatibilité `issues_view`. series_id est en plus nécessaire pour
+    // résoudre/créer le bon arc_id au moment d'écrire (voir plus bas).
+    let q = supabase.from("issues_view").select("id, series_id, series_title, arc_name, number, year").like("id", "cv-%").range(from, from + PAGE - 1);
     if (seriesFilter) q = q.eq("series_title", seriesFilter);
     const { data, error } = await q;
     if (error) throw error;
@@ -117,7 +122,10 @@ async function main() {
     if (newArcName !== row.arc_name) {
       console.log(`  ${row.series_title} #${row.number}${row.year ? " (" + row.year + ")" : ""} : "${row.arc_name ?? "—"}" → "${newArcName ?? "—"}"`);
       if (!dryRun) {
-        const { error } = await supabase.from("issues").update({ arc_name: newArcName }).eq("id", row.id);
+        // arc_name est maintenant résolu en arc_id (table `arcs`, créé au
+        // besoin) plutôt qu'écrit en texte libre sur `issues`.
+        const newArcId = await getOrCreateArc(supabase, row.series_id, newArcName);
+        const { error } = await supabase.from("issues").update({ arc_id: newArcId }).eq("id", row.id);
         if (error) { console.log(`    (échec écriture : ${error.message})`); failed++; continue; }
       }
       changed++;

@@ -82,6 +82,7 @@
 import fs from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 import { cvGet, sleep } from "./lib/comicvine.js";
+import { getOrCreateSeries, getOrCreateArc } from "./lib/taxonomy.js";
 
 // La clé Comic Vine elle-même est lue par lib/comicvine.js (COMICVINE_API_KEYS,
 // une ou plusieurs clés séparées par des virgules) — on vérifie juste ici
@@ -154,10 +155,18 @@ function parseIssueNumber(raw) {
   return { number: base + Math.min(offset, 0.9), label: s };
 }
 
-function toIssueRow(issue, seriesTitle, volumeId) {
+// Devenue async avec la migration series/runs/arcs (2026-10-24) : l'arc
+// n'est plus un texte libre stocké sur la ligne, c'est maintenant un
+// arc_id résolu (créé au besoin) dans la table `arcs`. `series_title`
+// reste présent sur l'objet renvoyé mais UNIQUEMENT en mémoire, pour les
+// logs et le rapprochement de doublons (replaceLegacyDuplicates) — ce
+// n'est plus une colonne de `issues` et upsertIssues() le retire avant
+// d'écrire en base (sinon Supabase rejette la colonne inconnue).
+async function toIssueRow(issue, seriesTitle, volumeId) {
   const writer = pickRole(issue.person_credits, ["writer", "script"]);
   const artist = pickRole(issue.person_credits, ["penciler", "artist", "penciller"]);
   const year = issue.cover_date ? issue.cover_date.slice(0, 4) : null;
+  const seriesId = `cvvol-${volumeId}`;
   // The real Comic Vine Story Arc (shared by every chapter/tie-in of the
   // same event, e.g. "Utopia") — NOT issue.name, which is this single
   // issue's own title (e.g. "Utopia Chapter 1") and used to be used here
@@ -168,14 +177,14 @@ function toIssueRow(issue, seriesTitle, volumeId) {
   const arcName = (issue.story_arc_credits && issue.story_arc_credits.length)
     ? issue.story_arc_credits[0].name
     : (issue.name || null);
+  const arcId = await getOrCreateArc(supabase, seriesId, arcName);
   const { number, label } = parseIssueNumber(issue.issue_number);
   return {
     id: `cv-${issue.id}`,
-    series_id: `cvvol-${volumeId}`,
-    series_title: seriesTitle,
-    color: "#1E3A8A",
-    run_name: null,
-    arc_name: arcName,
+    series_id: seriesId,
+    series_title: seriesTitle, // en mémoire seulement, voir commentaire ci-dessus
+    run_id: null, // Comic Vine n'a pas de notion de "run" éditorial
+    arc_id: arcId,
     number,
     number_label: label,
     year: year ? parseInt(year, 10) : null,
@@ -190,7 +199,22 @@ function toIssueRow(issue, seriesTitle, volumeId) {
 // les tirets/points/apostrophes) — même convention que les scripts SQL
 // de ce projet (restore_issues.sql, les scripts de watchlist, etc.).
 function normTitle(t) {
-  return (t || "").toLowerCase().replace(/^the\s+/, "").replace(/[-.:,'’]+/g, "").replace(/\s+/g, " ").trim();
+  // "/" et "&" sont traités comme des séparateurs de mots (-> espace), pas
+  // supprimés purement, sinon "Sentry/Fantastic Four" deviendrait
+  // "sentryfantastic four" (mots recollés) au lieu de "sentry fantastic
+  // four" — ce qui empêcherait justement de la rapprocher d'une ancienne
+  // ligne "Sentry: Fantastic Four" (où le ":" lui, est bien supprimé par
+  // la convention existante). Ajouté après coup : plusieurs titres ont dû
+  // être corrigés de ":" vers "/" pour matcher le nom réel des volumes
+  // Comic Vine (Sentry/*, Daredevil/Punisher…), ce qui cassait sans ça le
+  // rapprochement avec les anciennes lignes non-Comic-Vine du même comic.
+  return (t || "")
+    .toLowerCase()
+    .replace(/^the\s+/, "")
+    .replace(/[/&]+/g, " ")
+    .replace(/[-.:,'’]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function isComicVineId(id) {
@@ -289,8 +313,12 @@ async function replaceLegacyIssue(oldId, newId, seriesTitle, number, year) {
 async function replaceLegacyDuplicates(rows) {
   const numbers = [...new Set(rows.map((r) => r.number))];
   if (!numbers.length) return;
+  // `series_title` n'existe plus sur la table `issues` elle-même (migration
+  // series/runs/arcs du 2026-10-24) : on lit la vue de compatibilité
+  // `issues_view`, qui le recalcule par jointure sur `series`, uniquement
+  // pour ce rapprochement par titre — l'écriture, elle, reste sur `issues`.
   const { data: existing, error } = await supabase
-    .from("issues")
+    .from("issues_view")
     .select("id, series_title, number, year")
     .in("number", numbers);
   if (error) { logLine("  (vérif doublons à remplacer impossible : " + error.message + ")"); return; }
@@ -340,7 +368,12 @@ async function upsertIssues(rows) {
   }
   if (!toWrite.length) return;
 
-  const { error } = await supabase.from("issues").upsert(toWrite, { onConflict: "series_id,number,year" });
+  // `series_title` n'est porté par les objets `toWrite` qu'en mémoire (pour
+  // les logs juste en dessous et pour replaceLegacyDuplicates) — ce n'est
+  // plus une colonne de `issues`, donc on le retire avant d'upserter, sinon
+  // Supabase/PostgREST rejette la colonne inconnue.
+  const dbRows = toWrite.map(({ series_title, ...dbRow }) => dbRow);
+  const { error } = await supabase.from("issues").upsert(dbRows, { onConflict: "series_id,number,year" });
   if (error) throw error;
   for (const r of toWrite) {
     logLine(`  + ${r.series_title} #${r.number}${r.year ? " (" + r.year + ")" : ""} — ${r.id}`);
@@ -360,6 +393,14 @@ async function importVolume(volumeId, seriesTitleOverride) {
   const volInfo = await cvGet(`/volume/4050-${volumeId}/`, "field_list=id,name,start_year,publisher");
   const seriesTitle = seriesTitleOverride || volInfo.results.name;
   logLine(`Import de "${seriesTitle}" (volume ${volumeId})…`);
+
+  // La ligne `series` doit exister AVANT le premier upsert d'issue, puisque
+  // issues.series_id porte maintenant une contrainte de clé étrangère vers
+  // series(id) (migration series/runs/arcs du 2026-10-24). "#1E3A8A" est la
+  // couleur jusqu'ici codée en dur sur chaque ligne importée depuis Comic
+  // Vine — elle vit maintenant sur la série plutôt que répétée sur chaque
+  // numéro. getOrCreateSeries() ne la touche plus si la série existe déjà.
+  await getOrCreateSeries(supabase, `cvvol-${volumeId}`, seriesTitle, "#1E3A8A");
 
   let offset = 0, total = Infinity, rows = [];
   let skippedAlreadyDone = 0;
@@ -395,7 +436,7 @@ async function importVolume(volumeId, seriesTitleOverride) {
       }
       await sleep(DELAY_MS);
       const full = await fetchIssueDetail(light.id);
-      rows.push(toIssueRow(full, seriesTitle, volumeId));
+      rows.push(await toIssueRow(full, seriesTitle, volumeId));
       if (rows.length >= 20) { await upsertIssues(rows); rows = []; }
     }
 
@@ -411,13 +452,27 @@ async function importVolume(volumeId, seriesTitleOverride) {
 // pour que l'appelant (notamment --file) sache distinguer "importé"
 // de "introuvable" plutôt que de traiter les deux comme un succès.
 async function importByTitle(title) {
-  // /volumes/?filter=name: lists every volume whose name contains the title
-  // (broader than /search/, which sometimes truncates before the real hit).
-  const res = await cvGet("/volumes/", `filter=name:${encodeURIComponent(title)}&field_list=id,name,start_year,publisher&limit=100`);
+  // /volumes/?filter=name: lists every volume whose name CONTAINS the title
+  // (broader than /search/, which sometimes truncates before the real hit) —
+  // for a generic title ("Fantastic Four", "Avengers"…) that can be well
+  // over 100 volumes (annuals, foreign editions, compilations listed as
+  // their own volume…), so this has to be paginated with the same offset
+  // loop as importVolume()'s issue listing. A single capped page used to
+  // silently miss any real volume that didn't happen to land in the first
+  // 100 results Comic Vine returned — which is exactly how a volume named
+  // exactly "Fantastic Four" could come back "introuvable".
+  let allResults = [], offset = 0, total = Infinity;
+  while (offset < total) {
+    const page = await cvGet("/volumes/", `filter=name:${encodeURIComponent(title)}&field_list=id,name,start_year,publisher&limit=100&offset=${offset}`);
+    total = page.number_of_total_results;
+    allResults = allResults.concat(page.results);
+    offset += 100;
+    await sleep(DELAY_MS);
+  }
   const norm = (s) => (s || "").trim().toLowerCase().replace(/^the\s+/, "");
   const targetNorm = norm(title);
-  const exact = res.results.filter((v) => norm(v.name) === targetNorm);
-  const pool = exact.length ? exact : res.results;
+  const exact = allResults.filter((v) => norm(v.name) === targetNorm);
+  const pool = exact.length ? exact : allResults;
   const marvelResults = pool.filter((v) => v.publisher?.name === "Marvel");
   const candidates = marvelResults.length ? marvelResults : pool;
   if (!candidates.length) {
