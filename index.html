@@ -810,7 +810,12 @@ async function fetchIssues(){
   let from = 0;
   const PAGE = 1000;
   while(true){
-    const { data, error } = await sb.from('issues').select('*').order('series_title').order('number').range(from, from + PAGE - 1);
+    // 'issues' n'a plus series_title/run_name/arc_name/color en colonnes
+    // propres depuis la migration series/runs/arcs (2026-10-24, voir
+    // supabase/migration_series_runs_arcs.sql) — on lit la vue de
+    // compatibilité 'issues_view', qui les recalcule par jointure et
+    // garde exactement la même forme qu'avant pour le reste de l'appli.
+    const { data, error } = await sb.from('issues_view').select('*').order('series_title').order('number').range(from, from + PAGE - 1);
     if(error){ console.error(error); break; }
     all = all.concat(data);
     if(!data.length || data.length < PAGE) break;
