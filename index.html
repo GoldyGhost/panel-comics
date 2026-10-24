@@ -95,9 +95,15 @@
   /* Fixed-column preview row, replacing the old horizontal scroller: always
      exactly ONE row — 7 on desktop, 5 on tablet, 3 on phone — kept in sync
      with the previewCount() JS helper, which must return the same counts. */
-  .row-preview { display: grid; grid-template-columns: repeat(7,1fr); gap: 16px; margin-bottom: 30px; }
-  @media (max-width: 639.98px) { .row-preview { grid-template-columns: repeat(3,1fr); gap: 10px; } }
-  @media (min-width: 640px) and (max-width: 1023.98px) { .row-preview { grid-template-columns: repeat(5,1fr); } }
+  /* minmax(0,1fr), pas juste 1fr : sans le "0", une colonne grandit pour
+     accueillir le contenu qui ne wrap pas (ex. l'étiquette pseudo en
+     white-space:nowrap de .friend-tag) au lieu de rester à sa part égale —
+     ce qui élargissait toute la ligne (covers plus grandes que les autres
+     lignes de la page, 3e carte coupée) au lieu de forcer l'étiquette à se
+     réduire dans sa colonne. */
+  .row-preview { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 16px; margin-bottom: 30px; }
+  @media (max-width: 639.98px) { .row-preview { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; } }
+  @media (min-width: 640px) and (max-width: 1023.98px) { .row-preview { grid-template-columns: repeat(5, minmax(0,1fr)); } }
   .grid .issue-card { height: 100%; }
   /* .row-preview is now always exactly ONE row (previewCount() returns the
      same number as the column count at every breakpoint — see JS), so the
@@ -106,7 +112,7 @@
      align-items: stretch) via .rp-item, which is what keeps the "…" button
      AND the caption below it (username / list name) lined up across every
      card in the row, no matter how many lines a given title wraps to. */
-  .rp-item { display: flex; flex-direction: column; height: 100%; }
+  .rp-item { display: flex; flex-direction: column; height: 100%; min-width: 0; }
   .rp-item .issue-card { flex: 1; }
   /* Caption under a .row-preview card (username, list name…): forced to one
      line with an ellipsis so a long one never pushes anything below it. */
@@ -421,11 +427,14 @@
   /* ---- grid: cover | caption/meta/rating/review ----
      Sur téléphone, meta (writer/artist/arc) est placé à droite de la
      couverture et sous le titre, comme sur ordinateur — pas en pleine
-     largeur sous la couverture — avec une couverture plus étroite et un
-     texte réduit (.tm-meta dt/dd) pour que ça rentre. */
+     largeur sous la couverture. La cover garde sa taille d'origine (124px,
+     pas rétrécie) : c'est le titre et les infos qui sont réduits pour
+     rentrer à côté (proposition validée). La cover peut déborder un peu
+     sous le bloc meta (espace vide) sans jamais chevaucher la notation qui
+     vient après — elle ne couvre que les 2 premières rangées de la grille. */
   .tm-rate .tm-grid {
     display: grid; gap: 10px;
-    grid-template-columns: 104px 1fr;
+    grid-template-columns: 124px 1fr;
     grid-template-areas: "cover caption" "cover meta" "rating rating" "review review";
   }
   @media (min-width: 640px) {
@@ -475,19 +484,22 @@
   }
   .tm-rate .tm-caption .tm-year { font-size: 11px; font-weight: 700; color: var(--ink); opacity: 0.75; }
   .tm-rate .tm-caption .tm-series-line {
-    font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 22px; color: #fff;
-    text-shadow: 2px 2px 0 var(--ink); line-height: 1.2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 14px; color: #fff;
+    text-shadow: 1.5px 1.5px 0 var(--ink); line-height: 1.15; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  }
+  @media (min-width: 640px) {
+    .tm-rate .tm-caption .tm-series-line { font-size: 22px; text-shadow: 2px 2px 0 var(--ink); line-height: 1.2; }
   }
   .tm-rate .tm-series-link { color: inherit; background: none; border: none; padding: 0; font: inherit; text-shadow: inherit; cursor: pointer; text-align: left; }
   .tm-rate .tm-series-link:hover { text-decoration: underline; }
 
   /* ---- meta ---- */
-  .tm-rate .tm-meta { grid-area: meta; display: grid; grid-template-columns: 1fr; gap: 4px 10px; margin: 0; background: #fff; color: #1B160F; border: 2px solid var(--ink); padding: 6px 8px; }
+  .tm-rate .tm-meta { grid-area: meta; display: grid; grid-template-columns: 1fr; gap: 4px 8px; margin: 0; background: #fff; color: #1B160F; border: 2px solid var(--ink); padding: 5px 7px; }
   @media (min-width: 420px) { .tm-rate .tm-meta { grid-template-columns: repeat(2,1fr); } }
   @media (min-width: 640px) { .tm-rate .tm-meta { background: none; border: none; padding: 0; color: inherit; grid-template-columns: repeat(2,1fr); gap: 8px 14px; } }
-  .tm-rate .tm-meta dt { font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 9.5px; letter-spacing: 0.04em; color: var(--red); margin: 0; }
-  @media (min-width: 640px) { .tm-rate .tm-meta dt { font-size: 11px; } }
-  .tm-rate .tm-meta dd { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; margin: 1px 0 0; }
+  .tm-rate .tm-meta dt { font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 8px; letter-spacing: 0.02em; color: var(--red); margin: 0; }
+  @media (min-width: 640px) { .tm-rate .tm-meta dt { font-size: 11px; letter-spacing: 0.04em; } }
+  .tm-rate .tm-meta dd { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 9px; margin: 1px 0 0; }
   @media (min-width: 640px) { .tm-rate .tm-meta dd { font-size: 13px; } }
 
   /* ---- rating ---- */
@@ -1430,7 +1442,7 @@ function fitFriendTags(){
     const avail = tag.parentElement ? tag.parentElement.clientWidth : 0;
     const natural = tag.scrollWidth;
     if(avail > 0 && natural > avail){
-      const scale = Math.max(0.6, avail / natural);
+      const scale = Math.max(0.5, avail / natural);
       tag.style.transform = `rotate(-2deg) scale(${scale})`;
     }
   });
