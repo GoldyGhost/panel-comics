@@ -114,6 +114,10 @@
   .cover-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
   .cover.has-img::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.35), transparent 45%); z-index: 2; }
   .cover .read-badge { position: absolute; bottom: 6px; right: 6px; background: var(--gold); color: var(--ink); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; border: 2px solid var(--ink); z-index: 3; }
+  /* Sélection multiple (voir issueCardHtml) : case à cocher en haut à gauche de la couverture */
+  .select-check { position: absolute; top: 6px; left: 6px; width: 24px; height: 24px; border-radius: 6px; background: #fff; border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: var(--ink); z-index: 3; }
+  .select-check.on { background: var(--gold); }
+  .issue-card.is-selected .cover { outline: 3px solid var(--red); outline-offset: 2px; }
   .group-read-badge { position: static; background: var(--gold); color: var(--ink); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border: 2px solid var(--ink); vertical-align: middle; margin-left: 8px; }
   .icon-btn { background: none; border: 2px solid transparent; border-radius: var(--radius); color: var(--ink-soft); padding: 4px; line-height: 0; }
   .icon-btn:hover { border-color: var(--ink); color: var(--ink); }
@@ -705,6 +709,12 @@ let state = {
 };
 let authMode = 'login';
 let lastGroups = {}; // populated by renderBrowse, used by the "Log all" / "Add all" actions
+// Sélection multiple (voir maquette validée) : limitée à UN groupe à la
+// fois (celui identifié par groupKey, une clé de lastGroups — series_id
+// ou nom d'arc selon le groupBy actif). Activer la sélection sur un
+// groupe désactive implicitement celle d'un autre groupe précédent.
+let multiSelect = { active: false, groupKey: null, ids: new Set() };
+function resetMultiSelect(){ multiSelect = { active: false, groupKey: null, ids: new Set() }; }
 
 /* ---------------- AUTH ---------------- */
 function hideLoadingScreen(){
@@ -1093,6 +1103,49 @@ async function refreshWatchlistsAndRender(){
   render();
 }
 
+/* ---------------- READING LISTS PUBLIQUES (Share + consultation + copie) ----------------
+   Voir supabase/public_watchlists.sql pour les policies RLS correspondantes :
+   une liste is_public=true devient lisible par les followers du
+   propriétaire (ligne dans `follows` où follower_id = moi). */
+async function toggleWatchlistPublic(id, makePublic){
+  const { error } = await sb.from('watchlists').update({ is_public: makePublic }).eq('id', id);
+  if(error){ alert("Error: " + error.message); return false; }
+  const w = watchlists.find(x=>x.id===id);
+  if(w) w.is_public = makePublic;
+  return true;
+}
+// userId -> { lists, itemsByListId } une fois chargé, ou 'loading' pendant
+// le fetch, ou undefined si jamais demandé. Chargé à la demande (quand on
+// ouvre la page d'un ami qu'on suit), pas au boot — ce n'est pas un
+// besoin de toutes les pages.
+let friendPublicLists = {};
+async function fetchFriendPublicWatchlists(userId){
+  const { data: lists, error } = await sb.from('watchlists').select('*').eq('user_id', userId).eq('is_public', true).order('created_at');
+  if(error){ console.error(error); return { lists: [], itemsByListId: {} }; }
+  if(!lists.length) return { lists: [], itemsByListId: {} };
+  const { data: items, error: itemsErr } = await sb.from('watchlist_items').select('*').in('watchlist_id', lists.map(l=>l.id)).order('position');
+  if(itemsErr) console.error(itemsErr);
+  const itemsByListId = {};
+  (items||[]).forEach(it=>{ (itemsByListId[it.watchlist_id] = itemsByListId[it.watchlist_id] || []).push(it); });
+  return { lists, itemsByListId };
+}
+function ensureFriendPublicLists(userId){
+  if(friendPublicLists[userId] !== undefined) return; // déjà chargé ou en cours
+  if(!followingIds.has(userId)){ friendPublicLists[userId] = { lists: [], itemsByListId: {} }; return; } // on ne le suit pas : rien à voir côté policy RLS
+  friendPublicLists[userId] = 'loading';
+  fetchFriendPublicWatchlists(userId).then(data=>{ friendPublicLists[userId] = data; render(); });
+}
+// Copie indépendante (snapshot) chez l'utilisateur courant — pas de lien
+// vivant avec la liste source, conformément au choix validé.
+async function copyFriendWatchlist(ownerUsername, sourceList, issueIds){
+  const name = `${sourceList.name} (from @${ownerUsername})`;
+  const w = await createWatchlist(name);
+  if(!w) return false;
+  watchlists.push(w);
+  if(issueIds.length) await addManyToWatchlist(w.id, issueIds);
+  return true;
+}
+
 /* ---------------- HELPERS ---------------- */
 function issueById(id){ return issuesCache.find(i=>i.id===id); }
 function logsForIssue(id){ return (logsByIssueId.get(id) || []).slice().sort((a,b)=> b.dateRead.localeCompare(a.dateRead)); }
@@ -1178,11 +1231,21 @@ function quickAddMenuHtml(issueId){
   </div>`;
 }
 function issueCardHtml(issue, opts){
-  const hideQuickAdd = opts && opts.hideQuickAdd;
+  const selectMode = opts && opts.selectMode;
+  const selected = selectMode && opts.selected;
+  const hideQuickAdd = (opts && opts.hideQuickAdd) || selectMode;
   const ls = logsForIssue(issue.id);
   const rated = ls.filter(l=>l.rating>0);
   const avg = rated.length ? Math.round(rated.reduce((a,l)=>a+l.rating,0)/rated.length) : null;
-  return `<div class="issue-card">${coverEl(issue)}<div class="card-meta">
+  // En mode sélection, la vignette perd son data-issue (donc le clic
+  // n'ouvre plus le popup de log) au profit de data-select-issue, qui
+  // bascule juste la case à cocher — voir attachMainEvents.
+  let cover = coverEl(issue);
+  if(selectMode){
+    cover = cover.replace(`data-issue="${issue.id}"`, `data-select-issue="${issue.id}"`)
+      .replace(/(<div class="cover[^>]*>)/, `$1<span class="select-check${selected?' on':''}">${selected?'✓':''}</span>`);
+  }
+  return `<div class="issue-card${selected ? ' is-selected' : ''}">${cover}<div class="card-meta">
     <div class="t">#${fmtIssueNumber(issue)}</div><button type="button" class="s title-link" data-issue-title="${issue.id}">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</button>
     ${avg!=null ? `<div class="stars">${starsHtml(avg)}</div>` : ''}
     ${hideQuickAdd ? '' : `<button class="quick-add-btn" data-quick-add-toggle="${issue.id}" title="Add to a list" aria-label="Add to a list">⋯</button>${quickAddMenuHtml(issue.id)}`}
@@ -1277,7 +1340,7 @@ document.getElementById('tabs').addEventListener('click', e=>{
 let searchDebounceTimer = null;
 document.getElementById('searchInput').addEventListener('input', e=>{
   state.search = e.target.value;
-  state.browsePage = 1; browseExpandedGroups.clear();
+  state.browsePage = 1; browseExpandedGroups.clear(); resetMultiSelect();
   if(state.tab!=='browse'){ setTab('browse'); return; }
   clearTimeout(searchDebounceTimer);
   searchDebounceTimer = setTimeout(render, 180);
@@ -1392,19 +1455,33 @@ function renderBrowse(){
     const shown = expanded ? g.issues : g.issues.slice(0, cap);
     const hasMore = g.issues.length > cap;
     const seriesDone = state.groupBy==='series' && isSeriesFullyRead(k);
+    const selecting = multiSelect.active && multiSelect.groupKey === k;
+    const selCount = selecting ? g.issues.filter(i=>multiSelect.ids.has(i.id)).length : 0;
     return `<div class="group-block">
       <div class="group-head">
         <h3>${escapeHtml(g.label)}${seriesDone ? '<span class="group-read-badge" title="Series fully read">✓</span>' : ''} <span class="n">${g.issues.length} issue${g.issues.length!==1?'s':''}</span></h3>
         <div class="group-head-actions">
-          <button class="log-group-btn" data-group-key="${escapeHtml(k)}">Log all (${g.issues.length})</button>
-          <select class="log-group-btn" data-add-group-key="${escapeHtml(k)}">
-            <option value="">+ Add all to list…</option>
-            ${watchlists.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('')}
-            <option value="__new__">+ New list…</option>
-          </select>
+          ${selecting ? `
+            <button class="log-group-btn" data-select-cancel-group-key="${escapeHtml(k)}">✕ Cancel</button>
+            <span class="log-group-btn" style="cursor:default;background:var(--ink);color:var(--paper)">${selCount} selected</span>
+            <button class="log-group-btn" data-log-selected-group-key="${escapeHtml(k)}" ${selCount?'':'disabled'}>Log selected (${selCount})</button>
+            <select class="log-group-btn" data-add-selected-group-key="${escapeHtml(k)}" ${selCount?'':'disabled'}>
+              <option value="">+ Add selected to list…</option>
+              ${watchlists.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('')}
+              <option value="__new__">+ New list…</option>
+            </select>
+          ` : `
+            <button class="log-group-btn" data-select-start-group-key="${escapeHtml(k)}" title="Select specific issues">☑ Select</button>
+            <button class="log-group-btn" data-group-key="${escapeHtml(k)}">Log all (${g.issues.length})</button>
+            <select class="log-group-btn" data-add-group-key="${escapeHtml(k)}">
+              <option value="">+ Add all to list…</option>
+              ${watchlists.map(w=>`<option value="${w.id}">${escapeHtml(w.name)}</option>`).join('')}
+              <option value="__new__">+ New list…</option>
+            </select>
+          `}
         </div>
       </div>
-      <div class="grid">${shown.map(issueCardHtml).join('')}</div>
+      <div class="grid">${shown.map(iss=>issueCardHtml(iss, selecting ? { selectMode: true, selected: multiSelect.ids.has(iss.id) } : undefined)).join('')}</div>
       ${hasMore ? `<button class="log-group-btn" data-toggle-group-expand="${escapeHtml(k)}" style="margin-top:10px">${expanded ? '▲ Show fewer' : `Show all ${g.issues.length} →`}</button>` : ''}
     </div>`;
   }).join('')
@@ -1498,6 +1575,7 @@ function renderWatchlist(){
       <div class="group-head">
         <h3 data-watchlist-id="${w.id}" style="cursor:pointer;text-decoration:underline">${escapeHtml(w.name)} <span class="n">${w.items.length} issue${w.items.length!==1?'s':''} · ${w.items.filter(it=>isRead(it.issue_id)).length}/${w.items.length} read</span></h3>
         ${w.is_default ? '' : `<div class="group-head-actions">
+        <button class="log-group-btn" data-toggle-public="${w.id}" title="${w.is_public ? 'Visible by your followers — click to make it private again' : 'Make this list visible to your followers'}">${w.is_public ? '✓ Public' : 'Share'}</button>
         <button class="icon-btn" data-rename-watchlist="${w.id}" title="Rename this list" aria-label="Rename this list">${ICON_EDIT}</button>
         <button class="icon-btn danger" data-delete-watchlist="${w.id}" title="Delete this list" aria-label="Delete this list">${ICON_TRASH}</button>
         </div>`}
@@ -1538,6 +1616,7 @@ function renderWatchlistDetail(watchlistId){
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
     <button class="log-group-btn" id="backToWatchlist">← Back to Reading List</button>
     ${w.is_default ? '' : `<div style="display:flex;gap:10px">
+    <button class="log-group-btn" data-toggle-public="${watchlistId}">${w.is_public ? '✓ Public — click to make private' : 'Share (make public)'}</button>
     <button class="log-group-btn" data-rename-watchlist="${watchlistId}">Rename this list</button>
     <button class="log-group-btn" data-delete-watchlist="${watchlistId}">Delete this list</button>
     </div>`}
@@ -1596,6 +1675,32 @@ function friendStatsHtml(allLogs){
   ${topWriters.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read writers</h2></div><div style="margin-bottom:22px">${bars(topWriters,maxW)}</div>` : ''}
   ${topHeroes.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read characters</h2></div><div>${bars(topHeroes,maxH)}</div>` : ''}`;
 }
+function friendPublicListsHtml(userId, username){
+  // Visible seulement si je suis cette personne (mes followers = les
+  // gens qui me suivent ; symétriquement je ne vois les listes
+  // publiques d'un ami que si je le suis moi-même — cf.
+  // supabase/public_watchlists.sql) : pas la peine d'afficher une
+  // section vide pour quelqu'un qui me suit sans que je le suive.
+  if(!followingIds.has(userId)) return '';
+  ensureFriendPublicLists(userId); // déclenche le fetch au besoin, se résout via un render() ultérieur
+  const data = friendPublicLists[userId];
+  if(data === 'loading' || data === undefined) return `<div class="section-title"><h2 style="font-size:20px">Public reading lists</h2></div><p class="hint">Loading…</p>`;
+  if(!data.lists.length) return '';
+  return `<div class="section-title"><h2 style="font-size:20px">Public reading lists</h2></div>
+  ${data.lists.map(w=>{
+    const items = data.itemsByListId[w.id] || [];
+    const issues = items.map(it=>issueById(it.issue_id)).filter(Boolean);
+    return `<div class="group-block">
+      <div class="group-head">
+        <h3>${escapeHtml(w.name)} <span class="n">${issues.length} issue${issues.length!==1?'s':''}</span></h3>
+        <div class="group-head-actions">
+          <button class="log-group-btn" data-download-friend-list="${w.id}|${userId}" title="Copy this list to your own reading lists">⬇ Download</button>
+        </div>
+      </div>
+      <div class="row-preview">${issues.slice(0,previewCount()).map(iss=>issueCardHtml(iss,{hideQuickAdd:true})).join('') || '<p class="hint">Empty list.</p>'}</div>
+    </div>`;
+  }).join('')}`;
+}
 function renderFriendOverview(userId){
   const p = followingProfiles[userId] || followerProfiles[userId];
   const allLogs = friendsLogsCache.filter(l=>l.userId===userId);
@@ -1605,7 +1710,8 @@ function renderFriendOverview(userId){
   ${allLogs.length ? friendStatsHtml(allLogs) : `<div class="empty"><span class="display">No reads yet</span></div>`}
   ${recent.length ? `<div class="section-title"><h2 style="font-size:20px">Recent reads</h2></div>
   <div class="row-preview">${recent.map(l=>{ const iss=issueById(l.issueId); return iss?`<div>${issueCardHtml(iss)}</div>`:''; }).join('')}</div>
-  <button class="log-group-btn" id="friendGoToAllReads">See all reads (${allLogs.length}) →</button>` : ''}`;
+  <button class="log-group-btn" id="friendGoToAllReads">See all reads (${allLogs.length}) →</button>` : ''}
+  ${friendPublicListsHtml(userId, p?p.username:'user')}`;
 }
 function renderFriendAllReads(userId){
   const p = followingProfiles[userId] || followerProfiles[userId];
@@ -1716,21 +1822,22 @@ function renderStats(){
 function parseWatchlistImportLine(line){
   line = line.trim();
   if(!line) return null;
-  let series, number;
-  if(line.includes(';')){
-    const parts = line.split(';');
-    series = parts[0].trim();
-    number = parseFloat(parts[1]);
-  } else if(line.includes(',')){
-    const parts = line.split(',');
-    series = parts[0].trim();
-    number = parseFloat(parts[1]);
-  } else {
-    const m = line.match(/^(.*?)[\s#]+(\d+(\.\d+)?)\s*$/);
-    if(m){ series = m[1].trim(); number = parseFloat(m[2]); }
-  }
-  if(!series || Number.isNaN(number)) return null;
-  return { series, number };
+  // L'année est désormais obligatoire sur chaque ligne (sert à choisir le
+  // bon comics quand un même titre+numéro existe pour plusieurs années/
+  // relances) : format "Titre;Numéro;Année" ou "Titre,Numéro,Année".
+  // L'ancien raccourci "Titre #Numéro" sans séparateur ni année n'est
+  // plus accepté — une ligne qui ne le respecte pas ressort "non trouvée"
+  // dans le pop-up de vérification plutôt que d'être devinée.
+  let parts;
+  if(line.includes(';')) parts = line.split(';');
+  else if(line.includes(',')) parts = line.split(',');
+  else return null;
+  if(parts.length < 3) return null;
+  const series = parts[0].trim();
+  const number = parseFloat(parts[1]);
+  const year = parseInt(parts[2], 10);
+  if(!series || Number.isNaN(number) || Number.isNaN(year)) return null;
+  return { series, number, year };
 }
 function normTitleForMatch(s){
   const n = s.toLowerCase().trim();
@@ -1747,28 +1854,73 @@ async function handleWatchlistImportFile(file){
     text = await file.text();
   }
   const lines = text.split(/\r?\n/);
-  const matchedIds = []; let unmatched = 0;
+  const results = []; // { raw, issue: found issue or null }
   for(const line of lines){
-    const parsed = parseWatchlistImportLine(line);
-    if(!parsed) continue;
+    const raw = line.trim();
+    if(!raw) continue;
+    const parsed = parseWatchlistImportLine(raw);
+    if(!parsed){ results.push({ raw, issue: null }); continue; }
     const norm = normTitleForMatch(parsed.series);
-    const found = issuesCache.find(i => i.number === parsed.number && normTitleForMatch(i.seriesTitle) === norm);
-    if(found) matchedIds.push(found.id); else unmatched++;
+    // Titre + numéro + année exacts : l'année fournie permet de choisir
+    // la bonne issue même quand plusieurs comics partagent titre+numéro
+    // (relances, séries homonymes).
+    const found = issuesCache.find(i => i.number === parsed.number && i.year === parsed.year && normTitleForMatch(i.seriesTitle) === norm);
+    results.push({ raw, issue: found || null });
   }
-  if(!matchedIds.length){ alert('No matching issues found in your database for this file.'); return; }
+  if(!results.length){ alert('Fichier vide ou illisible.'); return; }
   let listId = state.viewingWatchlistId;
   if(!listId){
-    const name = window.prompt('Import into which list? Type an existing name, or a new one to create it:');
+    const name = window.prompt('Importer dans quelle liste ? Tape un nom existant, ou un nouveau pour la créer :');
     if(!name || !name.trim()) return;
     let w = watchlists.find(x => x.name.toLowerCase() === name.trim().toLowerCase());
     if(!w){ w = await createWatchlist(name.trim()); if(!w) return; watchlists.push(w); }
     listId = w.id;
   }
-  const ok = await addManyToWatchlist(listId, matchedIds);
-  if(ok){
-    await refreshWatchlistsAndRender();
-    alert(`Imported ${matchedIds.length} issue(s).${unmatched ? ' ' + unmatched + ' line(s) could not be matched.' : ''}`);
-  }
+  openCsvReviewModal(results, listId);
+}
+
+/* ---------------- CSV IMPORT — pop-up de vérification avant import ---------------- */
+let csvReviewResults = null, csvReviewListId = null;
+function openCsvReviewModal(results, listId){
+  csvReviewResults = results; csvReviewListId = listId;
+  document.getElementById('overlay').classList.add('open');
+  renderCsvReviewModal();
+}
+function renderCsvReviewModal(){
+  const matched = csvReviewResults.filter(r=>r.issue);
+  const unmatched = csvReviewResults.filter(r=>!r.issue);
+  document.getElementById('modal').innerHTML = `
+    <button class="close-x" id="closeModal">&times;</button>
+    <div class="modal-head splash">
+      <h3>Vérification de l'import</h3>
+      <div class="sub">${matched.length} trouvée(s)${unmatched.length ? ', ' + unmatched.length + ' non trouvée(s)' : ''} sur ${csvReviewResults.length} ligne(s)</div>
+    </div>
+    <div style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin:12px 0">
+      ${matched.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:2px solid var(--ink);border-radius:8px;background:var(--paper-2)">
+        <span style="color:#1a7a1a;font-weight:800">✓</span>
+        <span style="flex:1">${escapeHtml(r.issue.seriesTitle)} #${fmtIssueNumber(r.issue)} <span style="color:var(--ink-soft)">(${r.issue.year})</span></span>
+      </div>`).join('')}
+      ${unmatched.map(r=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:2px solid var(--ink);border-radius:8px;opacity:0.6">
+        <span style="color:var(--red);font-weight:800">✗</span>
+        <span style="flex:1">${escapeHtml(r.raw)}</span>
+      </div>`).join('')}
+    </div>
+    <p class="hint">Seules les lignes trouvées (✓) seront importées. Les non trouvées (✗) sont ignorées — relance l'import après correction du fichier si besoin.</p>
+    <button class="splash-btn" id="csvReviewConfirm" ${!matched.length?'disabled':''}><span>VALIDER L'IMPORT (${matched.length})</span></button>`;
+  document.getElementById('closeModal').addEventListener('click', closeModal);
+  const confirmBtn = document.getElementById('csvReviewConfirm');
+  if(confirmBtn) confirmBtn.addEventListener('click', async (e)=>{
+    const btn = e.currentTarget; btn.disabled = true;
+    const ids = matched.map(r=>r.issue.id);
+    const ok = await addManyToWatchlist(csvReviewListId, ids);
+    if(ok){
+      await refreshWatchlistsAndRender();
+      closeModal();
+      alert(`${ids.length} issue(s) importée(s).`);
+    } else {
+      btn.disabled = false;
+    }
+  });
 }
 
 function attachMainEvents(){
@@ -1780,20 +1932,20 @@ function attachMainEvents(){
     if(el.dataset.lightboxCover) el.addEventListener('click', ()=> openLightbox(el.dataset.lightboxCover));
   });
   const gs = document.getElementById('groupSelect');
-  if(gs) gs.addEventListener('change', e=>{ state.groupBy = e.target.value; state.browsePage = 1; browseExpandedGroups.clear(); render(); });
+  if(gs) gs.addEventListener('change', e=>{ state.groupBy = e.target.value; state.browsePage = 1; browseExpandedGroups.clear(); resetMultiSelect(); render(); });
   const yf = document.getElementById('yearFromSelect');
-  if(yf) yf.addEventListener('change', e=>{ state.filterYearFrom = e.target.value; state.browsePage = 1; browseExpandedGroups.clear(); render(); });
+  if(yf) yf.addEventListener('change', e=>{ state.filterYearFrom = e.target.value; state.browsePage = 1; browseExpandedGroups.clear(); resetMultiSelect(); render(); });
   const yt = document.getElementById('yearToSelect');
-  if(yt) yt.addEventListener('change', e=>{ state.filterYearTo = e.target.value; state.browsePage = 1; browseExpandedGroups.clear(); render(); });
+  if(yt) yt.addEventListener('change', e=>{ state.filterYearTo = e.target.value; state.browsePage = 1; browseExpandedGroups.clear(); resetMultiSelect(); render(); });
   const hsi = document.getElementById('heroSearchInput');
   if(hsi){
     hsi.addEventListener('input', e=>{ heroSearchDraft = e.target.value; });
     hsi.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); document.getElementById('heroSearchBtn').click(); } });
   }
   const hsb = document.getElementById('heroSearchBtn');
-  if(hsb) hsb.addEventListener('click', ()=>{ state.filterHero = heroSearchDraft.trim(); state.browsePage = 1; browseExpandedGroups.clear(); render(); });
+  if(hsb) hsb.addEventListener('click', ()=>{ state.filterHero = heroSearchDraft.trim(); state.browsePage = 1; browseExpandedGroups.clear(); resetMultiSelect(); render(); });
   const hsc = document.getElementById('heroSearchClear');
-  if(hsc) hsc.addEventListener('click', ()=>{ heroSearchDraft = ''; state.filterHero = ''; state.browsePage = 1; browseExpandedGroups.clear(); render(); });
+  if(hsc) hsc.addEventListener('click', ()=>{ heroSearchDraft = ''; state.filterHero = ''; state.browsePage = 1; browseExpandedGroups.clear(); resetMultiSelect(); render(); });
   const bPrev = document.getElementById('browsePrev');
   if(bPrev) bPrev.addEventListener('click', ()=>{ if(state.browsePage>1){ state.browsePage--; render(); window.scrollTo({top:0,behavior:'smooth'}); } });
   const bNext = document.getElementById('browseNext');
@@ -1825,11 +1977,72 @@ function attachMainEvents(){
     const ok = await addManyToWatchlist(listId, group.issues.map(i=>i.id));
     if(ok) await refreshWatchlistsAndRender();
   }));
+  /* ---------------- Sélection multiple (un seul groupe à la fois) ---------------- */
+  document.querySelectorAll('[data-select-start-group-key]').forEach(el=> el.addEventListener('click', ()=>{
+    multiSelect = { active: true, groupKey: el.dataset.selectStartGroupKey, ids: new Set() };
+    render();
+  }));
+  document.querySelectorAll('[data-select-cancel-group-key]').forEach(el=> el.addEventListener('click', ()=>{
+    multiSelect = { active: false, groupKey: null, ids: new Set() };
+    render();
+  }));
+  document.querySelectorAll('[data-select-issue]').forEach(el=> el.addEventListener('click', ()=>{
+    const id = el.dataset.selectIssue;
+    if(multiSelect.ids.has(id)) multiSelect.ids.delete(id); else multiSelect.ids.add(id);
+    render();
+  }));
+  document.querySelectorAll('[data-log-selected-group-key]').forEach(el=> el.addEventListener('click', ()=>{
+    const key = el.dataset.logSelectedGroupKey;
+    const group = lastGroups[key];
+    const ids = [...multiSelect.ids];
+    if(!group || !ids.length) return;
+    multiSelect = { active: false, groupKey: null, ids: new Set() }; // la sélection est "consommée" à l'ouverture du popup
+    openBatchModal(group.baseLabel + ' — ' + ids.length + ' selected', ids);
+  }));
+  document.querySelectorAll('select[data-add-selected-group-key]').forEach(el=> el.addEventListener('change', async ()=>{
+    const key = el.dataset.addSelectedGroupKey;
+    const ids = [...multiSelect.ids];
+    const val = el.value;
+    if(!ids.length || !val) return;
+    let listId = val;
+    if(val === '__new__'){
+      const name = window.prompt('New list name:');
+      if(!name || !name.trim()){ el.value=''; return; }
+      const w = await createWatchlist(name.trim());
+      if(!w){ el.value=''; return; }
+      watchlists.push(w);
+      listId = w.id;
+    }
+    const ok = await addManyToWatchlist(listId, ids);
+    if(ok){
+      multiSelect = { active: false, groupKey: null, ids: new Set() };
+      await refreshWatchlistsAndRender();
+    }
+  }));
   document.querySelectorAll('[data-del]').forEach(el=> el.addEventListener('click', async ()=>{
     if(!confirm('Delete this entry?')) return;
     if(await deleteLog(el.dataset.del)) refreshLogsAndRender();
   }));
   document.querySelectorAll('[data-edit-log]').forEach(el=> el.addEventListener('click', ()=> openEditModal(el.dataset.editLog)));
+  document.querySelectorAll('[data-toggle-public]').forEach(el=> el.addEventListener('click', async (e)=>{
+    e.stopPropagation();
+    const w = watchlists.find(x=>x.id===el.dataset.togglePublic);
+    if(!w) return;
+    const ok = await toggleWatchlistPublic(w.id, !w.is_public);
+    if(ok) render();
+  }));
+  document.querySelectorAll('[data-download-friend-list]').forEach(el=> el.addEventListener('click', async (e)=>{
+    const btn = e.currentTarget; btn.disabled = true;
+    const [listId, userId] = el.dataset.downloadFriendList.split('|');
+    const data = friendPublicLists[userId];
+    const list = data && data.lists && data.lists.find(l=>l.id===listId);
+    if(!list){ btn.disabled = false; return; }
+    const issueIds = (data.itemsByListId[listId] || []).map(it=>it.issue_id);
+    const p = followingProfiles[userId] || followerProfiles[userId];
+    const ok = await copyFriendWatchlist(p ? p.username : 'user', list, issueIds);
+    if(ok){ await refreshWatchlistsAndRender(); alert(`"${list.name}" copied to your reading lists.`); }
+    else btn.disabled = false;
+  }));
   document.querySelectorAll('[data-delete-watchlist]').forEach(el=> el.addEventListener('click', async (e)=>{
     e.stopPropagation();
     const w = watchlists.find(x=>x.id===el.dataset.deleteWatchlist);
@@ -1873,7 +2086,7 @@ function attachMainEvents(){
   document.querySelectorAll('[data-follow-toggle]').forEach(el=> el.addEventListener('click', async ()=>{
     const id = el.dataset.followToggle;
     const ok = followingIds.has(id) ? await unfollowUser(id) : await followUser(id);
-    if(ok) await refreshFriendsAndRender();
+    if(ok){ delete friendPublicLists[id]; await refreshFriendsAndRender(); } // follow/unfollow change ce qu'on a le droit de voir (RLS) — force un re-fetch
   }));
   document.querySelectorAll('[data-friend-user]').forEach(el=> el.addEventListener('click', ()=>{
     state.viewingFriendId = el.dataset.friendUser;
@@ -2188,19 +2401,23 @@ function tmUpdateRatingDisplay(){
   const onoEl = document.getElementById('tmOno');
   if(onoEl){ onoEl.textContent = ono.text; onoEl.classList.toggle('tm-hot', ono.hot); }
 }
-function tmEnhanceStarA11y(){
-  const wrap = document.getElementById('tmStarPicker');
+// Generalisé (ne dépend plus de modalRating en dur) pour pouvoir servir à
+// la fois au popup "RATE THIS ISSUE!" (1 issue) et au popup de log en lot
+// (plusieurs issues, batchRating) — même logique de clavier/aria pour les
+// deux via des callbacks getValue/setValue/onChange, comme attachStarPicker.
+function tmEnhanceStarA11y(pickerId, getValue, setValue, onChange){
+  const wrap = document.getElementById(pickerId);
   if(!wrap) return;
   wrap.setAttribute('role', 'radiogroup');
   wrap.setAttribute('aria-label', 'Rating');
   const cells = [...wrap.querySelectorAll('.star-cell')];
   const sync = ()=>{
-    const curWhole = Math.max(1, Math.min(5, Math.round((modalRating||0)/2) || 1));
+    const curWhole = Math.max(1, Math.min(5, Math.round((getValue()||0)/2) || 1));
     cells.forEach((cell, idx)=>{
       const p = idx+1;
       cell.setAttribute('role', 'radio');
       cell.setAttribute('aria-label', p+' star'+(p>1?'s':''));
-      cell.setAttribute('aria-checked', String((modalRating||0) >= p*2));
+      cell.setAttribute('aria-checked', String((getValue()||0) >= p*2));
       cell.setAttribute('tabindex', p===curWhole ? '0' : '-1');
     });
   };
@@ -2208,15 +2425,16 @@ function tmEnhanceStarA11y(){
   wrap.addEventListener('keydown', e=>{
     if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key)) return;
     e.preventDefault();
-    const curWhole = Math.max(0, Math.min(5, Math.round((modalRating||0)/2)));
+    const curWhole = Math.max(0, Math.min(5, Math.round((getValue()||0)/2)));
     let nextWhole;
     if(e.key==='ArrowLeft') nextWhole = Math.max(0, curWhole-1);
     else if(e.key==='ArrowRight') nextWhole = Math.min(5, curWhole+1);
     else if(e.key==='Home') nextWhole = 1;
     else nextWhole = 5;
-    modalRating = nextWhole===0 ? null : nextWhole*2;
-    renderStarPickerFill('tmStarPicker', modalRating||0);
-    tmUpdateRatingDisplay();
+    const val = nextWhole===0 ? null : nextWhole*2;
+    setValue(val);
+    renderStarPickerFill(pickerId, val||0);
+    onChange();
     sync();
     cells[Math.max(0, nextWhole-1)].focus();
   });
@@ -2304,13 +2522,13 @@ function renderModal(){
     // share the exact same series title (e.g. several "Moon Knight"),
     // so the title alone wouldn't land on the right one.
     if(issue.year){ state.filterYearFrom = String(issue.year); state.filterYearTo = String(issue.year); }
-    state.browsePage = 1; browseExpandedGroups.clear();
+    state.browsePage = 1; browseExpandedGroups.clear(); resetMultiSelect();
     const si = document.getElementById('searchInput'); if(si) si.value = issue.seriesTitle;
     setTab('browse');
   });
 
   attachStarPicker('tmStarPicker', ()=>modalRating, v=>{ modalRating=v; tmUpdateRatingDisplay(); });
-  tmEnhanceStarA11y();
+  tmEnhanceStarA11y('tmStarPicker', ()=>modalRating, v=>{ modalRating=v; }, tmUpdateRatingDisplay);
 
   const reviewEl = document.getElementById('tmReview');
   const countEl = document.getElementById('tmReviewCount');
@@ -2351,13 +2569,13 @@ function openCsvImportInfoModal(){
   document.getElementById('modal').innerHTML = `
     <button class="close-x" id="closeModal">&times;</button>
     <div class="modal-head splash"><h3>Import a reading list</h3>
-      <div class="sub">One issue per line — series title, then the number.</div></div>
-    <p class="hint">Accepted formats, semicolon or comma between the series and the number, or just a "#" before it:</p>
-    <div class="csv-example">Amazing Spider-Man;300
-Daredevil;227
-X-Men,129
-Civil War #3</div>
-    <p class="hint">The series title must match one already in the catalogue ("The" at the start and letter case are ignored). A .txt or .xlsx file works the same way. Lines that don't match anything are skipped, no error.</p>
+      <div class="sub">One issue per line — series title, number, then the year.</div></div>
+    <p class="hint">Accepted formats, semicolon or comma between the three fields. The year is required — it's what picks the right comics when the same title+number exists for several years (relaunches, homonymous series):</p>
+    <div class="csv-example">Amazing Spider-Man;300;1990
+Daredevil;227;1985
+X-Men,129,1980
+Dark Avengers,7,2009</div>
+    <p class="hint">The series title must match one already in the catalogue ("The" at the start and letter case are ignored), and the year must match exactly. A .txt or .xlsx file works the same way. After choosing a file, you'll see a review screen listing which lines were found and which weren't, to confirm before anything is imported.</p>
     <p class="hint">If you're viewing a specific list, the import adds to it. Otherwise you'll be asked which list to use.</p>
     <button class="splash-btn" id="csvImportChooseFile"><span>CHOOSE FILE</span></button>`;
   document.getElementById('closeModal').addEventListener('click', closeModal);
@@ -2411,40 +2629,110 @@ function renderEditModal(first){
   });
 }
 
-/* ---------------- BATCH (LOG A WHOLE GROUP) MODAL ---------------- */
+/* ---------------- BATCH (LOG A WHOLE GROUP) MODAL ----------------
+   Même habillage "comic" (tm-rate) que le popup une-seule-issue
+   ("RATE THIS ISSUE!") au lieu de l'ancien popup "splash" — seule la
+   zone couverture change (mosaïque des 1res couvertures + badge du
+   nombre total au lieu d'une seule grande couverture), le reste
+   (notation, review, bouton, stamp "SAVED!") est la même logique,
+   appliquée à toutes les issues du lot à la fois. */
 let batchIssueIds = null, batchRating = null, batchLabel = '';
 function openBatchModal(label, issueIds){
   batchLabel = label; batchIssueIds = issueIds; batchRating = null;
+  tmLastFocusedEl = document.activeElement;
+  const modalEl = document.getElementById('modal');
+  modalEl.classList.add('tm-rate');
+  modalEl.setAttribute('role', 'dialog');
+  modalEl.setAttribute('aria-modal', 'true');
+  modalEl.setAttribute('aria-labelledby', 'tmModalTitle');
   document.getElementById('overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
   renderBatchModal();
+  tmTrapFocus();
+}
+function tmBatchCoverHtml(issues){
+  const MAX_SHOWN = 4;
+  const shown = issues.slice(0, MAX_SHOWN);
+  const extra = issues.length - shown.length;
+  const cellHtml = (iss)=> iss.coverUrl
+    ? `<img src="${iss.coverUrl}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">`
+    : `<div style="width:100%;height:100%;background:${iss.color||'var(--blue)'};display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Bangers',sans-serif;font-size:13px;text-align:center;padding:2px">#${fmtIssueNumber(iss)}</div>`;
+  return `<div class="tm-cover-col">
+    <div class="tm-roundel">${issues.length}</div>
+    <div class="tm-cover" style="--accent:${(issues[0]&&issues[0].color)||'var(--blue)'};display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;padding:4px;cursor:default">
+      ${shown.map(cellHtml).join('')}
+      ${extra > 0 ? `<div style="position:absolute;bottom:6px;right:6px;background:var(--ink);color:#fff;font-family:'Bangers',sans-serif;font-size:12px;padding:2px 7px;border-radius:10px;z-index:2">+${extra}</div>` : ''}
+    </div>
+  </div>`;
+}
+function tmUpdateBatchRatingDisplay(){
+  const ono = tmOnomatopoeia(batchRating);
+  const onoEl = document.getElementById('tmOno');
+  if(onoEl){ onoEl.textContent = ono.text; onoEl.classList.toggle('tm-hot', ono.hot); }
 }
 function renderBatchModal(){
+  const issues = batchIssueIds.map(issueById).filter(Boolean);
+  const ono = tmOnomatopoeia(batchRating);
+
   document.getElementById('modal').innerHTML = `
-    <button class="close-x" id="closeModal">&times;</button>
-    <div class="modal-head splash">
-      <h3>${escapeHtml(batchLabel)}</h3>
-      <div class="sub">${batchIssueIds.length} issue${batchIssueIds.length!==1?'s':''} will be logged with the same date, rating and review.</div>
+    <div class="tm-header">
+      <h2 id="tmModalTitle">LOG ${issues.length} ISSUE${issues.length!==1?'S':''}!</h2>
+      <button type="button" class="tm-close" id="tmClose" aria-label="Close">&times;</button>
     </div>
-    <div class="field"><label>Rating (optional)</label>
-      ${starPickerHtml('batchStarPicker')}</div>
-    <div class="field"><label>Review (optional, applied to all)</label>
-      <svg class="speech-bubble-svg" viewBox="0 0 320 130">
-        <path d="M14,0 H306 A14,14 0 0 1 320,14 V86 A14,14 0 0 1 306,100 H42 L26,124 L34,100 H14 A14,14 0 0 1 0,86 V14 A14,14 0 0 1 14,0 Z" fill="#fff" stroke="var(--ink)" stroke-width="3" stroke-linejoin="round"/>
-        <foreignObject x="14" y="12" width="292" height="76">
-          <textarea xmlns="http://www.w3.org/1999/xhtml" id="batchReview" placeholder="Your thoughts on this run…"></textarea>
-        </foreignObject>
-      </svg>
+    <div class="tm-body">
+      <div class="tm-grid">
+        ${tmBatchCoverHtml(issues)}
+        <div class="tm-caption">
+          <div class="tm-year">${issues.length} ISSUE${issues.length!==1?'S':''}</div>
+          <div class="tm-series-line">${escapeHtml((batchLabel||'').toUpperCase())}</div>
+        </div>
+        <div class="tm-rating">
+          <div class="tm-rating-row">
+            <div class="tm-star-picker">${starPickerHtml('tmStarPicker')}</div>
+            <span class="tm-onomatopoeia${ono.hot?' tm-hot':''}" id="tmOno">${ono.text}</span>
+          </div>
+        </div>
+        <div class="tm-review">
+          <div class="tm-bubble-wrap">
+            <span class="tm-bubble-label">YOUR REVIEW · APPLIED TO ALL</span>
+            <div class="tm-bubble">
+              <textarea id="tmReview" maxlength="1000" placeholder="YOUR THOUGHTS ON THIS RUN…"></textarea>
+              <div class="tm-bubble-count"><span id="tmReviewCount">0</span> / 1000</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <button class="splash-btn" id="saveBatchLog"><span>LOG ALL ${batchIssueIds.length}!</span></button>
-    <p class="hint">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>`;
-  document.getElementById('closeModal').addEventListener('click', closeModal);
-  attachStarPicker('batchStarPicker', ()=>batchRating, v=>{ batchRating=v; });
-  document.getElementById('saveBatchLog').addEventListener('click', async (e)=>{
+    <div class="tm-footer">
+      <div class="tm-btn-row">
+        <button type="button" class="tm-btn tm-btn-cancel" id="tmCancel">CANCEL</button>
+        <button type="button" class="tm-btn tm-btn-save" id="tmSave"><span>LOG ALL ${issues.length}!</span></button>
+      </div>
+    </div>
+    <p class="hint" style="padding:14px 20px 0;opacity:0.75">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>
+    <div class="tm-stamp" id="tmStamp">THWIP! SAVED!</div>`;
+
+  document.getElementById('tmClose').addEventListener('click', closeModal);
+  document.getElementById('tmCancel').addEventListener('click', closeModal);
+
+  attachStarPicker('tmStarPicker', ()=>batchRating, v=>{ batchRating=v; tmUpdateBatchRatingDisplay(); });
+  tmEnhanceStarA11y('tmStarPicker', ()=>batchRating, v=>{ batchRating=v; }, tmUpdateBatchRatingDisplay);
+
+  const reviewEl = document.getElementById('tmReview');
+  const countEl = document.getElementById('tmReviewCount');
+  reviewEl.addEventListener('input', ()=>{ countEl.textContent = reviewEl.value.length; });
+
+  document.getElementById('tmSave').addEventListener('click', async (e)=>{
     const today = new Date().toISOString().slice(0,10);
-    const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = '<span>Logging…</span>';
-    const review = document.getElementById('batchReview').value.trim();
+    const btn = e.currentTarget; btn.disabled = true; btn.innerHTML = '<span>LOGGING…</span>';
+    const review = reviewEl.value.trim();
     const ok = await insertLogsBatch(batchIssueIds, { dateRead: today, rating: batchRating, review });
-    if(ok){ await removeFromReadLater(batchIssueIds); closeModal(); refreshLogsAndRender(); } else { btn.disabled = false; btn.innerHTML = `<span>LOG ALL ${batchIssueIds.length}!</span>`; }
+    if(ok){
+      await removeFromReadLater(batchIssueIds);
+      tmShowStamp(()=>{ closeModal(); refreshLogsAndRender(); });
+    } else {
+      btn.disabled = false; btn.innerHTML = `<span>LOG ALL ${issues.length}!</span>`;
+    }
   });
 }
 
