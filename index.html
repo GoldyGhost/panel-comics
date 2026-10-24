@@ -875,6 +875,37 @@ function saveCachedIssues(data){
   try { localStorage.setItem(ISSUES_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() })); }
   catch(e){ /* storage full/unavailable — just skip caching this time */ }
 }
+// Même principe que ci-dessus (loadCachedIssues/saveCachedIssues), généralisé
+// pour les autres données personnelles (logs, follows, reading lists, profils
+// d'amis) : c'était jusqu'ici le seul morceau mis en cache, donc à chaque
+// retour sur le site tout le reste était refetché en entier avant le premier
+// rendu — d'où le temps de chargement systématique. Voir finishBoot().
+// Namespacées par user id (jamais juste un nom fixe) : ce sont des données
+// PERSONNELLES — sans ça, se connecter avec un 2e compte sur le même
+// navigateur afficherait un flash des logs/follows/listes du 1er compte
+// avant que le vrai fetch ne les remplace.
+const CACHE_KEYS = {
+  logs: ()=> `tomics_logs_cache_v1:${session.user.id}`,
+  follows: ()=> `tomics_follows_cache_v1:${session.user.id}`,
+  watchlists: ()=> `tomics_watchlists_cache_v1:${session.user.id}`,
+  friendProfiles: ()=> `tomics_friend_profiles_cache_v1:${session.user.id}`,
+};
+function loadCache(key){
+  try {
+    const raw = localStorage.getItem(key);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && parsed.data !== undefined ? parsed.data : null;
+  } catch(e){ return null; }
+}
+function saveCache(key, data){
+  try { localStorage.setItem(key, JSON.stringify({ data, savedAt: Date.now() })); }
+  catch(e){ /* storage full/unavailable — just skip caching this time */ }
+}
+function applyFriendProfiles(profs){
+  followingProfiles = {}; followerProfiles = {};
+  profs.forEach(p=>{ followingProfiles[p.id] = p; followerProfiles[p.id] = p; });
+}
 async function fetchIssues(){
   let all = [];
   let from = 0;
@@ -1104,32 +1135,104 @@ async function finishBoot(){
     document.getElementById('logoutBtn').addEventListener('click', logout);
   }
   await ensureDefaultReadingList();
-  // The issue catalogue is by far the biggest fetch (thousands of rows,
-  // several pages) and the least likely to have changed since last visit.
-  // If a cached copy exists, use it immediately instead of waiting on the
-  // network — a fresh copy still loads in the background and silently
-  // replaces it (and the cache) once it arrives.
+
+  // Même principe pour tout ce qui suit : chaque bloc a une copie locale
+  // (localStorage) utilisée IMMÉDIATEMENT pour le premier rendu si elle
+  // existe (pas d'attente réseau), pendant qu'une version fraîche se charge
+  // en arrière-plan et remplace silencieusement l'affichage (et le cache)
+  // une fois reçue — avant, seul le catalogue (issuesCache) avait ce
+  // traitement, donc tout le reste imposait un temps de chargement complet
+  // à chaque retour sur le site, même quand rien n'avait changé.
   const cachedIssues = loadCachedIssues();
   const issuesPromise = fetchIssues().then(data => { saveCachedIssues(data); return data; });
-  const [allLogs, followingList, followerList, wls, wlItems] = await Promise.all([
-    fetchLogs(), fetchFollowing(), fetchFollowers(), fetchWatchlists(), fetchWatchlistItems(),
-    fetchHeroNames() // fast — just enough to fill the Hero dropdown; sets allHeroNames itself
-  ]);
+
+  const cachedLogs = loadCache(CACHE_KEYS.logs());
+  const logsPromise = fetchLogs().then(data => { saveCache(CACHE_KEYS.logs(), data); return data; });
+
+  const cachedFollows = loadCache(CACHE_KEYS.follows());
+  const followsPromise = Promise.all([fetchFollowing(), fetchFollowers()]).then(([followingList, followerList])=>{
+    const data = { followingList, followerList };
+    saveCache(CACHE_KEYS.follows(), data);
+    return data;
+  });
+
+  const cachedWatchlists = loadCache(CACHE_KEYS.watchlists());
+  const watchlistsPromise = Promise.all([fetchWatchlists(), fetchWatchlistItems()]).then(([wls, wlItems])=>{
+    const data = { wls, wlItems };
+    saveCache(CACHE_KEYS.watchlists(), data);
+    return data;
+  });
+
+  const heroNamesPromise = fetchHeroNames(); // fast — just enough to fill the Hero dropdown; sets allHeroNames itself
+
   issuesCache = (cachedIssues && cachedIssues.length) ? cachedIssues : await issuesPromise;
-  splitLogs(allLogs);
-  followingIds = new Set(followingList);
-  followerIds = new Set(followerList);
-  watchlists = wls;
-  watchlistItems = wlItems;
-  const profs = await fetchProfilesByIds([...new Set([...followingIds, ...followerIds])]);
-  followingProfiles = {}; followerProfiles = {};
-  profs.forEach(p=>{ followingProfiles[p.id] = p; followerProfiles[p.id] = p; });
+  splitLogs(cachedLogs || await logsPromise);
+  if(cachedFollows){
+    followingIds = new Set(cachedFollows.followingList);
+    followerIds = new Set(cachedFollows.followerList);
+  } else {
+    const fresh = await followsPromise;
+    followingIds = new Set(fresh.followingList);
+    followerIds = new Set(fresh.followerList);
+  }
+  if(cachedWatchlists){
+    watchlists = cachedWatchlists.wls; watchlistItems = cachedWatchlists.wlItems;
+  } else {
+    const fresh = await watchlistsPromise;
+    watchlists = fresh.wls; watchlistItems = fresh.wlItems;
+  }
+
+  const cachedFriendProfiles = loadCache(CACHE_KEYS.friendProfiles());
+  if(cachedFriendProfiles){
+    applyFriendProfiles(cachedFriendProfiles);
+  } else {
+    const profs = await fetchProfilesByIds([...new Set([...followingIds, ...followerIds])]);
+    applyFriendProfiles(profs);
+    saveCache(CACHE_KEYS.friendProfiles(), profs);
+  }
+
+  await heroNamesPromise;
   render();
   hideLoadingScreen();
+
+  // Rafraîchissements silencieux en arrière-plan pour tout ce qui vient du
+  // cache — l'utilisateur voit déjà l'appli, ça remplace juste les données
+  // par la version à jour une fois arrivée, sans nouvel écran de chargement.
   if(cachedIssues && cachedIssues.length){
     issuesPromise.then(freshIssues=>{ issuesCache = freshIssues; render(); });
   }
+  if(cachedLogs){
+    logsPromise.then(freshLogs=>{ splitLogs(freshLogs); render(); });
+  }
+  if(cachedFollows){
+    followsPromise.then(fresh=>{
+      followingIds = new Set(fresh.followingList);
+      followerIds = new Set(fresh.followerList);
+      render();
+      refreshFriendProfilesInBackground();
+    });
+  } else if(cachedFriendProfiles){
+    // Les follows étaient déjà frais (pas de cache pour eux), mais les
+    // profils venaient du cache : un seul rafraîchissement suffit, avec
+    // des IDs déjà à jour — pas besoin d'attendre followsPromise.
+    refreshFriendProfilesInBackground();
+  }
+  if(cachedWatchlists){
+    watchlistsPromise.then(fresh=>{ watchlists = fresh.wls; watchlistItems = fresh.wlItems; render(); });
+  }
+
   fetchHeroLinksInBackground(); // the big issue<->character table; not awaited, never blocks boot
+}
+// Relit les profils des amis (following+followers) en arrière-plan et
+// rafraîchit le cache correspondant — utilisé après un boot depuis le
+// cache, et une 2e fois une fois les follows frais arrivés (au cas où un
+// nouveau suivi n'était pas encore dans le cache des profils).
+async function refreshFriendProfilesInBackground(){
+  const ids = [...new Set([...followingIds, ...followerIds])];
+  const profs = await fetchProfilesByIds(ids);
+  applyFriendProfiles(profs);
+  saveCache(CACHE_KEYS.friendProfiles(), profs);
+  render();
 }
 let logsByIssueId = new Map(); // issue id -> own logs on that issue (built once per fetch, not per card)
 let readIssueIdSet = new Set();
@@ -1145,20 +1248,33 @@ function splitLogs(allLogs){
   readIssueIdSet = new Set(logsByIssueId.keys());
   seriesFullyReadCache.clear();
 }
-async function refreshLogsAndRender(){ splitLogs(await fetchLogs()); render(); }
-async function refreshIssuesAndRender(){ issuesCache = await fetchIssues(); render(); }
+// Chacune de ces fonctions garde aussi le cache localStorage correspondant
+// à jour après une modification faite dans l'appli (log, follow, reading
+// list…) — sans ça, le prochain chargement instantané depuis le cache
+// (finishBoot) repartirait d'une version périmée le temps que le
+// rafraîchissement en arrière-plan rattrape.
+async function refreshLogsAndRender(){
+  const allLogs = await fetchLogs();
+  saveCache(CACHE_KEYS.logs(), allLogs);
+  splitLogs(allLogs);
+  render();
+}
+async function refreshIssuesAndRender(){ issuesCache = await fetchIssues(); saveCachedIssues(issuesCache); render(); }
 async function refreshFriendsAndRender(){
   const [allLogs, followingList, followerList] = await Promise.all([fetchLogs(), fetchFollowing(), fetchFollowers()]);
+  saveCache(CACHE_KEYS.logs(), allLogs);
+  saveCache(CACHE_KEYS.follows(), { followingList, followerList });
   splitLogs(allLogs);
   followingIds = new Set(followingList);
   followerIds = new Set(followerList);
   const profs = await fetchProfilesByIds([...new Set([...followingIds, ...followerIds])]);
-  followingProfiles = {}; followerProfiles = {};
-  profs.forEach(p=>{ followingProfiles[p.id] = p; followerProfiles[p.id] = p; });
+  applyFriendProfiles(profs);
+  saveCache(CACHE_KEYS.friendProfiles(), profs);
   render();
 }
 async function refreshWatchlistsAndRender(){
   const [wls, wlItems] = await Promise.all([fetchWatchlists(), fetchWatchlistItems()]);
+  saveCache(CACHE_KEYS.watchlists(), { wls, wlItems });
   watchlists = wls; watchlistItems = wlItems;
   render();
 }
