@@ -92,22 +92,34 @@
 
   .row-scroll { display: flex; gap: 14px; overflow-x: auto; overflow-y: visible; padding-bottom: 8px; margin-bottom: 30px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap: 16px; }
-  /* Fixed-column preview row, replacing the old horizontal scroller: 1 row of 7 on
-     desktop, 2 rows of 5 (10) on tablet, 2 rows of 3 (6) on phone — kept in sync with
-     the previewCount() JS helper, which must return the same item counts. */
+  /* Fixed-column preview row, replacing the old horizontal scroller: always
+     exactly ONE row — 7 on desktop, 5 on tablet, 3 on phone — kept in sync
+     with the previewCount() JS helper, which must return the same counts. */
   .row-preview { display: grid; grid-template-columns: repeat(7,1fr); gap: 16px; margin-bottom: 30px; }
   @media (max-width: 639.98px) { .row-preview { grid-template-columns: repeat(3,1fr); gap: 10px; } }
   @media (min-width: 640px) and (max-width: 1023.98px) { .row-preview { grid-template-columns: repeat(5,1fr); } }
   .grid .issue-card { height: 100%; }
-  /* .row-preview items carry an extra caption (username/list name) below the
-     card — NOT stretching .issue-card to 100% here, and sizing rows to
-     min-content, are both needed so the grid's row height actually accounts
-     for that caption instead of the next row starting right over it. */
-  .row-preview { grid-auto-rows: min-content; align-items: start; }
+  /* .row-preview is now always exactly ONE row (previewCount() returns the
+     same number as the column count at every breakpoint — see JS), so the
+     old "2 rows, don't stretch or the 2nd row overlaps the caption"
+     workaround is gone: items stretch to the row's full height (default
+     align-items: stretch) via .rp-item, which is what keeps the "…" button
+     AND the caption below it (username / list name) lined up across every
+     card in the row, no matter how many lines a given title wraps to. */
+  .rp-item { display: flex; flex-direction: column; height: 100%; }
+  .rp-item .issue-card { flex: 1; }
   /* Caption under a .row-preview card (username, list name…): forced to one
-     line so it can never need more vertical space than reserved for it,
-     which is what was letting the next row's covers run over it. */
+     line with an ellipsis so a long one never pushes anything below it. */
   .row-preview-label { font-size: 11px; color: var(--ink-soft); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Friends' recent reads : étiquette BD dorée avec le pseudo, AU-DESSUS de
+     la couverture (option C validée) — même esprit que .tm-caption dans le
+     popup "RATE THIS ISSUE!". Hauteur réservée fixe (.friend-tag-row) pour
+     que la couverture démarre toujours à la même hauteur d'une carte à
+     l'autre, quelle que soit la longueur du pseudo. */
+  .friend-tag-row { position: relative; height: 30px; margin-bottom: 8px; }
+  .friend-tag { position: absolute; left: 0; top: 0; max-width: 92%; box-sizing: border-box; background: var(--gold); border: 2.5px solid var(--ink); border-radius: 3px; padding: 2px 9px; transform: rotate(-2deg); box-shadow: 2px 2px 0 rgba(0,0,0,0.25); cursor: pointer; }
+  .friend-tag span { font-family: 'Bangers', sans-serif; color: #fff; text-shadow: 1.5px 1.5px 0 var(--ink); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .friend-tag:hover { filter: brightness(1.08); }
   .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; -webkit-touch-callout: none; user-select: none; }
   .cover:hover { box-shadow: 6px 6px 0 var(--hover-shadow); }
   .cover::before { content: ""; position: absolute; inset: 0; background-image: repeating-radial-gradient(circle at 6px 6px, rgba(255,255,255,0.35) 0 1.4px, transparent 1.6px 8px); mix-blend-mode: overlay; opacity: 0.55; z-index: 1; }
@@ -127,7 +139,10 @@
   .card-meta .t { font-weight: 700; } .card-meta .s { color: var(--ink-soft); font-size: 11px; } .card-meta .stars { color: var(--gold); font-size: 11px; }
   .title-link { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
   .title-link:hover { text-decoration: underline; }
-  .card-meta .s.title-link { display: block; width: 100%; }
+  /* Titre de la série : 2 lignes max puis ellipsis — un titre très long
+     (fréquent côté Marvel) ne gonfle plus indéfiniment la hauteur de la
+     carte et ne décale plus le bouton "…" / la légende des voisines. */
+  .card-meta .s.title-link { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; width: 100%; }
   .card-meta .s.title-link:hover { color: var(--ink); }
 
   /* Fractional star rating (read-only display, small) */
@@ -1154,9 +1169,9 @@ function isRead(id){ return readIssueIdSet.has(id); }
 // link takes over — kept in sync with the CSS breakpoints for that class.
 function previewCount(){
   const w = window.innerWidth;
-  if(w <= 639) return 6;   // phone: 2 rows of 3
-  if(w <= 1023) return 10; // tablet: 2 rows of 5
-  return 7;                // desktop: 1 row of 7
+  if(w <= 639) return 3;  // phone: 1 row of 3
+  if(w <= 1023) return 5; // tablet: 1 row of 5
+  return 7;               // desktop: 1 row of 7 (unchanged)
 }
 // For a reading list's preview: show the next issues to read (in list order)
 // rather than just the first ones, which might already be read. Falls back
@@ -1366,7 +1381,12 @@ function friendRecentCardHtml(log){
   const iss = issueById(log.issueId); if(!iss) return '';
   const p = followingProfiles[log.userId] || followerProfiles[log.userId];
   const uname = p?p.username:'someone';
-  return `<div>${issueCardHtml(iss)}<div class="row-preview-label" style="cursor:pointer;text-decoration:underline" title="@${escapeHtml(uname)}" data-friend-user="${log.userId}">@${escapeHtml(uname)}</div></div>`;
+  // Pseudo dans une étiquette BD dorée AU-DESSUS de la couverture (option C
+  // validée) — remplace l'ancienne légende grise sous la carte.
+  return `<div class="rp-item">
+    <div class="friend-tag-row"><div class="friend-tag" title="@${escapeHtml(uname)}" data-friend-user="${log.userId}"><span>@${escapeHtml(uname)}</span></div></div>
+    ${issueCardHtml(iss)}
+  </div>`;
 }
 
 function nonDefaultWatchlistIssueIds(){
@@ -1392,11 +1412,11 @@ function renderHome(){
       <div class="stat"><b>${wlTotal ? wlRead+'/'+wlTotal : '—'}</b><span>Reading list read</span></div>
     </div></div>
   ${continueLists.length ? `<div class="section-title"><h2>Continue the reading list</h2><span class="count">next up in each list</span></div>
-  <div class="row-preview">${continueLists.map(({issue,listName})=>`<div>${issueCardHtml(issue)}<div class="row-preview-label" title="${escapeHtml(listName)}">${escapeHtml(listName)}</div></div>`).join('')}</div>` : ''}
+  <div class="row-preview">${continueLists.map(({issue,listName})=>`<div class="rp-item">${issueCardHtml(issue)}<div class="row-preview-label" title="${escapeHtml(listName)}">${escapeHtml(listName)}</div></div>`).join('')}</div>` : ''}
   ${friendsRecent.length ? `<div class="section-title"><h2>Friends' recent reads</h2></div>
   <div class="row-preview">${friendsRecent.map(friendRecentCardHtml).join('')}</div>` : ''}
   ${recentLogs.length ? `<div class="section-title"><h2>Recent reads</h2></div>
-  <div class="row-preview">${recentLogs.map(l=>{ const iss=issueById(l.issueId); return iss?`<div>${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
+  <div class="row-preview">${recentLogs.map(l=>{ const iss=issueById(l.issueId); return iss?`<div class="rp-item">${issueCardHtml(iss)}</div>`:''; }).join('')}</div>` : ''}
   <div class="section-title"><h2>Discover</h2><span class="count">first unread issue of a random series</span></div>
   <div class="row-preview">${discover.map(issueCardHtml).join('')}</div>`;
 }
@@ -1419,7 +1439,19 @@ function renderBrowse(){
     g.label = g.baseLabel + fmtYearRange(g.issues);
   });
   lastGroups = groups;
-  const allKeys = Object.keys(groups).sort((a,b)=>groups[a].label.localeCompare(groups[b].label));
+  // La recherche reste inclusive (titre, écrivain, arc…) mais un groupe
+  // dont le TITRE lui-même contient le texte cherché passe en premier —
+  // ex. chercher "avengers" remonte la série Avengers avant un arc comme
+  // "Age of Ultron" qui ne matchait qu'au texte de l'arc, pas au titre.
+  const searchQ = normSearch(state.search.trim());
+  const allKeys = Object.keys(groups).sort((a,b)=>{
+    if(searchQ){
+      const aTitleMatch = normSearch(groups[a].baseLabel).includes(searchQ) ? 0 : 1;
+      const bTitleMatch = normSearch(groups[b].baseLabel).includes(searchQ) ? 0 : 1;
+      if(aTitleMatch !== bTitleMatch) return aTitleMatch - bTitleMatch;
+    }
+    return groups[a].label.localeCompare(groups[b].label);
+  });
   const totalPages = Math.max(1, Math.ceil(allKeys.length / BROWSE_PAGE_SIZE));
   if(state.browsePage > totalPages) state.browsePage = totalPages;
   if(state.browsePage < 1) state.browsePage = 1;
@@ -1598,7 +1630,10 @@ function renderAllReadingListIssuesDetail(){
   if(state.watchlistShowUnreadOnly) allIssues = allIssues.filter(i=>!isRead(i.id));
   return `<div class="section-title"><h2>All reading list issues</h2><span class="count">${allIssues.length} issue${allIssues.length!==1?'s':''}</span></div>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
     <button class="log-group-btn" id="backToWatchlist">← Back to Reading List</button>
+    <button class="log-group-btn" id="wlBackToTop">↑ Back to top</button>
+    </div>
   </div>
   <div class="switch-row" style="margin-bottom:14px">
     <button class="mini-switch${state.watchlistShowUnreadOnly?' on':''}" id="unreadOnlySwitch"><span class="knob"></span></button>
@@ -1614,7 +1649,10 @@ function renderWatchlistDetail(watchlistId){
   const readCount = items.filter(it=>isRead(it.issue_id)).length;
   return `<div class="section-title"><h2>${escapeHtml(w.name)}</h2><span class="count">${items.length} issue${items.length!==1?'s':''} · ${readCount}/${items.length} read</span></div>
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
     <button class="log-group-btn" id="backToWatchlist">← Back to Reading List</button>
+    <button class="log-group-btn" id="wlBackToTop">↑ Back to top</button>
+    </div>
     ${w.is_default ? '' : `<div style="display:flex;gap:10px">
     <button class="log-group-btn" data-toggle-public="${watchlistId}">${w.is_public ? '✓ Public — click to make private' : 'Share (make public)'}</button>
     <button class="log-group-btn" data-rename-watchlist="${watchlistId}">Rename this list</button>
@@ -2119,7 +2157,15 @@ function attachMainEvents(){
   document.querySelectorAll('[data-watchlist-id]').forEach(el=> el.addEventListener('click', ()=>{
     state.viewingWatchlistId = el.dataset.watchlistId;
     setTab('watchlist');
+    // Ouvrir une liste amène directement au prochain numéro non lu, plutôt
+    // que de forcer à re-scroller depuis le haut à chaque fois.
+    if(state.viewingWatchlistId && state.viewingWatchlistId !== '__all__'){
+      const firstUnread = document.querySelector('.wl-row:not(.is-read-row)');
+      if(firstUnread) firstUnread.scrollIntoView({ block: 'center' });
+    }
   }));
+  const wlBackToTop = document.getElementById('wlBackToTop');
+  if(wlBackToTop) wlBackToTop.addEventListener('click', ()=> window.scrollTo({top:0, behavior:'smooth'}));
   const backWl = document.getElementById('backToWatchlist');
   if(backWl) backWl.addEventListener('click', ()=>{ state.viewingWatchlistId = null; render(); });
   document.querySelectorAll('[data-remove-watchlist]').forEach(el=> el.addEventListener('click', async ()=>{
