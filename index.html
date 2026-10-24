@@ -113,13 +113,25 @@
   .row-preview-label { font-size: 11px; color: var(--ink-soft); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* Friends' recent reads : étiquette BD dorée avec le pseudo, AU-DESSUS de
      la couverture (option C validée) — même esprit que .tm-caption dans le
-     popup "RATE THIS ISSUE!". Hauteur réservée fixe (.friend-tag-row) pour
-     que la couverture démarre toujours à la même hauteur d'une carte à
-     l'autre, quelle que soit la longueur du pseudo. */
-  .friend-tag-row { position: relative; height: 30px; margin-bottom: 8px; }
-  .friend-tag { position: absolute; left: 0; top: 0; max-width: 92%; box-sizing: border-box; background: var(--gold); border: 2.5px solid var(--ink); border-radius: 3px; padding: 2px 9px; transform: rotate(-2deg); box-shadow: 2px 2px 0 rgba(0,0,0,0.25); cursor: pointer; }
-  .friend-tag span { font-family: 'Bangers', sans-serif; color: #fff; text-shadow: 1.5px 1.5px 0 var(--ink); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+     popup "RATE THIS ISSUE!". Le nom complet doit TOUJOURS être visible (pas
+     de coupe/ellipsis) : si l'étiquette dépasse la largeur de la carte,
+     fitFriendTags() réduit l'échelle de toute l'étiquette (texte + fond +
+     bordure ensemble) via transform:scale plutôt que de tronquer le texte. */
+  .friend-tag-row { margin-bottom: 8px; }
+  /* Fond doré + bordure foncée FIXES (pas de var(--ink), qui passe clair en
+     dark mode) : en mode sombre l'ancienne version avait un contour de
+     texte couleur crème sous du texte blanc — quasi invisible. Un contour
+     toujours sombre garde le texte blanc lisible sur le doré, quel que
+     soit le thème. */
+  .friend-tag { display: inline-block; max-width: 100%; box-sizing: border-box; background: var(--gold); border: 2.5px solid #1B160F; border-radius: 3px; padding: 2px 9px; transform: rotate(-2deg); transform-origin: left top; box-shadow: 2px 2px 0 rgba(0,0,0,0.4); cursor: pointer; white-space: nowrap; }
+  .friend-tag span { font-family: 'Bangers', sans-serif; color: #fff; text-shadow: 1.5px 1.5px 0 #1B160F, -0.5px -0.5px 0 #1B160F; font-size: 14px; white-space: nowrap; display: block; }
   .friend-tag:hover { filter: brightness(1.08); }
+  /* Review en dessous du titre, dans Friends' recent reads : 3 lignes max
+     avec ellipsis, pour ne pas faire exploser la hauteur d'une carte par
+     rapport à ses voisines sans review (l'étirement en hauteur du rp-item
+     garde quand même tout aligné même si certaines en ont une et d'autres
+     non). */
+  .friend-review { font-size: 10.5px; color: var(--ink-soft); font-style: italic; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .cover { position: relative; aspect-ratio: 2/3; border-radius: var(--radius); border: 2px solid var(--ink); box-shadow: var(--card-shadow); overflow: hidden; cursor: pointer; background: var(--accent, var(--blue)); transition: transform 0.12s ease; -webkit-touch-callout: none; user-select: none; }
   .cover:hover { box-shadow: 6px 6px 0 var(--hover-shadow); }
   .cover::before { content: ""; position: absolute; inset: 0; background-image: repeating-radial-gradient(circle at 6px 6px, rgba(255,255,255,0.35) 0 1.4px, transparent 1.6px 8px); mix-blend-mode: overlay; opacity: 0.55; z-index: 1; }
@@ -204,6 +216,18 @@
 
   .friend-row { display: flex; justify-content: space-between; align-items: center; font-size: 13.5px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 
+  /* Reading list detail — barre d'actions (Back to Reading List / Back to
+     top / Share / Rename / Delete) figée en haut pendant le scroll de la
+     liste, juste sous le header de l'appli (--app-header-h, mis à jour en
+     JS). Avant ça, "Back to top" n'était utile qu'en étant déjà en haut —
+     donc jamais visible quand on en a besoin. Fixe, le bouton reste
+     accessible à tout moment pendant le défilement. */
+  .wl-toolbar {
+    position: sticky; top: var(--app-header-h, 0px); z-index: 20;
+    background: var(--paper); padding: 10px 0; margin: 0 0 16px;
+    display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;
+    border-bottom: 1px solid var(--line);
+  }
   /* Reading list rows (detail view, drag-and-drop) */
   .wl-row { display: grid; grid-template-columns: 44px 1fr auto auto; gap: 12px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .wl-row .wl-cover { width: 44px; aspect-ratio: 2/3; border-radius: 2px; border: 2px solid var(--ink); background: var(--accent, var(--blue)); position: relative; overflow: hidden; }
@@ -340,7 +364,7 @@
      ============================================================ */
   .modal.tm-rate {
     display: flex; flex-direction: column;
-    max-height: 92vh; overflow-y: auto;
+    max-height: 92vh; overflow: hidden;
     padding: 0; border: 5px solid var(--ink); border-radius: 0;
     background: var(--paper);
     background-image: radial-gradient(circle, var(--line) 1.5px, transparent 1.5px);
@@ -348,10 +372,11 @@
     max-width: 520px;
   }
   @media (min-width: 640px) { .modal.tm-rate { max-width: 1000px; border-radius: 0; } }
-  @media (max-width: 639.98px) {
-    .modal.tm-rate { overflow: hidden; }
-    .tm-rate .tm-body { overflow-y: auto; }
-  }
+  /* Tout le contenu (couverture/légende/notation/review/avis des amis)
+     défile dans cette seule zone, à toutes les tailles d'écran — le header
+     et le footer (Cancel/Log It) restent eux hors de .tm-scroll, donc
+     toujours visibles, "figés" en haut et en bas de la popup. */
+  .tm-rate .tm-scroll { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
 
   .tm-rate .tm-header {
     flex: 0 0 auto; position: relative;
@@ -375,7 +400,7 @@
   .tm-rate .tm-close:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 #000; }
   .tm-rate .tm-close:active { transform: translate(1px,1px); box-shadow: 1px 1px 0 #000; }
 
-  .tm-rate .tm-body { flex: 1 1 auto; padding: 20px; }
+  .tm-rate .tm-body { padding: 20px; }
   .tm-rate .tm-footer {
     flex: 0 0 auto; padding: 0 20px 20px;
   }
@@ -393,11 +418,15 @@
     display: inline-block;
   }
 
-  /* ---- grid: cover | caption/meta/rating/review ---- */
+  /* ---- grid: cover | caption/meta/rating/review ----
+     Sur téléphone, meta (writer/artist/arc) est placé à droite de la
+     couverture et sous le titre, comme sur ordinateur — pas en pleine
+     largeur sous la couverture — avec une couverture plus étroite et un
+     texte réduit (.tm-meta dt/dd) pour que ça rentre. */
   .tm-rate .tm-grid {
-    display: grid; gap: 14px;
-    grid-template-columns: 124px 1fr;
-    grid-template-areas: "cover caption" "meta meta" "rating rating" "review review";
+    display: grid; gap: 10px;
+    grid-template-columns: 104px 1fr;
+    grid-template-areas: "cover caption" "cover meta" "rating rating" "review review";
   }
   @media (min-width: 640px) {
     .tm-rate .tm-grid {
@@ -453,10 +482,13 @@
   .tm-rate .tm-series-link:hover { text-decoration: underline; }
 
   /* ---- meta ---- */
-  .tm-rate .tm-meta { grid-area: meta; display: grid; grid-template-columns: repeat(2,1fr); gap: 8px 14px; margin: 0; background: #fff; color: #1B160F; border: 2px solid var(--ink); padding: 10px 12px; }
-  @media (min-width: 640px) { .tm-rate .tm-meta { background: none; border: none; padding: 0; color: inherit; } }
-  .tm-rate .tm-meta dt { font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 11px; letter-spacing: 0.04em; color: var(--red); margin: 0; }
-  .tm-rate .tm-meta dd { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 13px; margin: 2px 0 0; }
+  .tm-rate .tm-meta { grid-area: meta; display: grid; grid-template-columns: 1fr; gap: 4px 10px; margin: 0; background: #fff; color: #1B160F; border: 2px solid var(--ink); padding: 6px 8px; }
+  @media (min-width: 420px) { .tm-rate .tm-meta { grid-template-columns: repeat(2,1fr); } }
+  @media (min-width: 640px) { .tm-rate .tm-meta { background: none; border: none; padding: 0; color: inherit; grid-template-columns: repeat(2,1fr); gap: 8px 14px; } }
+  .tm-rate .tm-meta dt { font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 9.5px; letter-spacing: 0.04em; color: var(--red); margin: 0; }
+  @media (min-width: 640px) { .tm-rate .tm-meta dt { font-size: 11px; } }
+  .tm-rate .tm-meta dd { font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; margin: 1px 0 0; }
+  @media (min-width: 640px) { .tm-rate .tm-meta dd { font-size: 13px; } }
 
   /* ---- rating ---- */
   .tm-rate .tm-rating { grid-area: rating; }
@@ -554,14 +586,15 @@
     font-family: 'Inter', sans-serif; font-weight: 700; font-size: 8.5px; letter-spacing: 0.04em;
     color: var(--ink-soft); text-transform: uppercase; border: 1px solid var(--ink-soft); border-radius: 3px; padding: 1px 4px;
   }
+  /* Même bulle que "YOUR REVIEW" (.tm-bubble) dans cette popup, texte
+     toujours affiché en entier (pas de "Show more"/line-clamp). */
   .tm-rate .tm-friend-bubble {
-    background: #fff; color: #1B160F; border-radius: 40% 60% 55% 45% / 45% 40% 60% 55%;
-    border: 2px solid var(--ink); padding: 8px 10px; font-family: 'Comic Neue', sans-serif; font-weight: 700;
-    text-transform: uppercase; font-size: 11px; line-height: 1.3;
+    background: #fff; color: #1B160F; border-radius: 26px 30px 28px 32px / 22px 24px 30px 26px;
+    border: 3px solid var(--ink); padding: 12px 14px 9px; font-family: 'Comic Neue', sans-serif; font-weight: 700;
+    text-transform: uppercase; font-size: 11px; line-height: 1.3; box-shadow: 4px 4px 0 rgba(0,0,0,0.18);
+    margin-top: 6px;
   }
-  .tm-rate .tm-friend-bubble p { margin: 0; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-  .tm-rate .tm-friend-bubble.tm-expanded p { -webkit-line-clamp: unset; }
-  .tm-rate .tm-friend-readmore { background: none; border: none; color: var(--blue); font-weight: 800; font-size: 10.5px; padding: 4px 0 0; cursor: pointer; text-transform: none; font-family: 'Inter', sans-serif; }
+  .tm-rate .tm-friend-bubble p { margin: 0; }
   .tm-rate .tm-friends-empty { text-align: center; color: var(--ink-soft); font-size: 13px; padding: 20px 10px; font-style: italic; }
 </style>
 </head>
@@ -1260,9 +1293,11 @@ function issueCardHtml(issue, opts){
     cover = cover.replace(`data-issue="${issue.id}"`, `data-select-issue="${issue.id}"`)
       .replace(/(<div class="cover[^>]*>)/, `$1<span class="select-check${selected?' on':''}">${selected?'✓':''}</span>`);
   }
+  const reviewText = opts && opts.reviewText;
   return `<div class="issue-card${selected ? ' is-selected' : ''}">${cover}<div class="card-meta">
     <div class="t">#${fmtIssueNumber(issue)}</div><button type="button" class="s title-link" data-issue-title="${issue.id}">${escapeHtml(issue.seriesTitle)}${issue.year?' ('+issue.year+')':''}</button>
     ${avg!=null ? `<div class="stars">${starsHtml(avg)}</div>` : ''}
+    ${reviewText ? `<div class="friend-review" title="${escapeHtml(reviewText)}">${escapeHtml(reviewText)}</div>` : ''}
     ${hideQuickAdd ? '' : `<button class="quick-add-btn" data-quick-add-toggle="${issue.id}" title="Add to a list" aria-label="Add to a list">⋯</button>${quickAddMenuHtml(issue.id)}`}
   </div></div>`;
 }
@@ -1370,6 +1405,35 @@ function render(){
   else if(state.tab==='friends') main.innerHTML = renderFriends();
   else if(state.tab==='stats') main.innerHTML = renderStats();
   attachMainEvents();
+  fitFriendTags();
+  updateAppHeaderHeightVar();
+}
+
+// Hauteur réelle du header sticky de l'appli (header.top), poussée dans une
+// variable CSS --app-header-h : .wl-toolbar s'en sert comme offset "top"
+// pour se coller juste en dessous de lui sans jamais le chevaucher, même
+// quand le header change de hauteur (passage à la ligne sur mobile, etc.).
+function updateAppHeaderHeightVar(){
+  const h = document.querySelector('header.top');
+  if(h) document.documentElement.style.setProperty('--app-header-h', h.offsetHeight + 'px');
+}
+window.addEventListener('resize', updateAppHeaderHeightVar);
+
+// Les pseudos des amis (étiquette BD dorée, Home) ne sont jamais tronqués :
+// si le nom complet dépasse la largeur disponible sur la carte, on réduit
+// l'échelle de l'étiquette entière (texte + fond + bordure, ensemble) au
+// lieu de couper le texte avec une ellipsis. clientWidth/scrollWidth sont
+// lus APRÈS l'injection du HTML, donc sur sa taille réelle à l'écran.
+function fitFriendTags(){
+  document.querySelectorAll('.friend-tag').forEach(tag=>{
+    tag.style.transform = 'rotate(-2deg)'; // reset avant mesure
+    const avail = tag.parentElement ? tag.parentElement.clientWidth : 0;
+    const natural = tag.scrollWidth;
+    if(avail > 0 && natural > avail){
+      const scale = Math.max(0.6, avail / natural);
+      tag.style.transform = `rotate(-2deg) scale(${scale})`;
+    }
+  });
 }
 
 // Most recent reads across all friends, newest first — not deduped by
@@ -1385,7 +1449,7 @@ function friendRecentCardHtml(log){
   // validée) — remplace l'ancienne légende grise sous la carte.
   return `<div class="rp-item">
     <div class="friend-tag-row"><div class="friend-tag" title="@${escapeHtml(uname)}" data-friend-user="${log.userId}"><span>@${escapeHtml(uname)}</span></div></div>
-    ${issueCardHtml(iss)}
+    ${issueCardHtml(iss, { reviewText: log.review })}
   </div>`;
 }
 
@@ -1629,7 +1693,7 @@ function renderAllReadingListIssuesDetail(){
   let allIssues = issuesCache.filter(i=>allIssueIds.has(i.id));
   if(state.watchlistShowUnreadOnly) allIssues = allIssues.filter(i=>!isRead(i.id));
   return `<div class="section-title"><h2>All reading list issues</h2><span class="count">${allIssues.length} issue${allIssues.length!==1?'s':''}</span></div>
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+  <div class="wl-toolbar">
     <div style="display:flex;gap:10px;flex-wrap:wrap">
     <button class="log-group-btn" id="backToWatchlist">← Back to Reading List</button>
     <button class="log-group-btn" id="wlBackToTop">↑ Back to top</button>
@@ -1648,7 +1712,7 @@ function renderWatchlistDetail(watchlistId){
   const items = watchlistItems.filter(it=>it.watchlist_id===watchlistId).sort((a,b)=>(a.position||0)-(b.position||0));
   const readCount = items.filter(it=>isRead(it.issue_id)).length;
   return `<div class="section-title"><h2>${escapeHtml(w.name)}</h2><span class="count">${items.length} issue${items.length!==1?'s':''} · ${readCount}/${items.length} read</span></div>
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+  <div class="wl-toolbar">
     <div style="display:flex;gap:10px;flex-wrap:wrap">
     <button class="log-group-btn" id="backToWatchlist">← Back to Reading List</button>
     <button class="log-group-btn" id="wlBackToTop">↑ Back to top</button>
@@ -2437,7 +2501,7 @@ function tmFriendsSection(){
         <div class="tm-friend-date">${fmtDate(l.dateRead)}</div>
       </div>
       ${displayRating > 0 ? `<div class="tm-friend-stars">${starsHtml(displayRating)}${seriesFallback ? '<span class="tm-friend-series-tag">SERIES</span>' : ''}</div>` : ''}
-      ${l.review ? `<div class="tm-friend-bubble" id="tmfb-${l.id}"><p>${escapeHtml(l.review)}</p><button type="button" class="tm-friend-readmore" data-tm-readmore="${l.id}">READ MORE</button></div>` : ''}
+      ${l.review ? `<div class="tm-friend-bubble" id="tmfb-${l.id}"><p>${escapeHtml(l.review)}</p></div>` : ''}
     </div>`;
   }).join('')}</div>` : `<div class="tm-friends-empty">NONE OF YOUR FRIENDS HAVE LOGGED THIS ONE YET…</div>`;
   return { countBadge, body };
@@ -2509,36 +2573,42 @@ function renderModal(){
       <h2 id="tmModalTitle">RATE THIS ISSUE!</h2>
       <button type="button" class="tm-close" id="tmClose" aria-label="Close">&times;</button>
     </div>
-    <div class="tm-body">
-      ${existing ? `<div class="tm-badge-logged">✓ ALREADY LOGGED · ${fmtDate(existing.dateRead)} — EDIT BELOW</div>` : ''}
-      <div class="tm-grid">
-        <div class="tm-cover-col">
-          <div class="tm-roundel">#${fmtIssueNumber(issue)}</div>
-          ${tmCoverHtml(issue)}
-        </div>
-        <div class="tm-caption">
-          ${issue.year ? `<div class="tm-year">${issue.year}</div>` : ''}
-          <div class="tm-series-line">
-            <button type="button" class="tm-series-link" id="tmSeriesLink">${escapeHtml((issue.seriesTitle||'').toUpperCase())}</button>
-            #${fmtIssueNumber(issue)}
+    <div class="tm-scroll">
+      <div class="tm-body">
+        ${existing ? `<div class="tm-badge-logged">✓ ALREADY LOGGED · ${fmtDate(existing.dateRead)} — EDIT BELOW</div>` : ''}
+        <div class="tm-grid">
+          <div class="tm-cover-col">
+            <div class="tm-roundel">#${fmtIssueNumber(issue)}</div>
+            ${tmCoverHtml(issue)}
           </div>
-        </div>
-        ${tmMetaHtml(issue)}
-        <div class="tm-rating">
-          <div class="tm-rating-row">
-            <div class="tm-star-picker">${starPickerHtml('tmStarPicker')}</div>
-            <span class="tm-onomatopoeia${ono.hot?' tm-hot':''}" id="tmOno">${ono.text}</span>
+          <div class="tm-caption">
+            ${issue.year ? `<div class="tm-year">${issue.year}</div>` : ''}
+            <div class="tm-series-line">
+              <button type="button" class="tm-series-link" id="tmSeriesLink">${escapeHtml((issue.seriesTitle||'').toUpperCase())}</button>
+              #${fmtIssueNumber(issue)}
+            </div>
           </div>
-        </div>
-        <div class="tm-review">
-          <div class="tm-bubble-wrap">
-            <span class="tm-bubble-label">YOUR REVIEW</span>
-            <div class="tm-bubble">
-              <textarea id="tmReview" maxlength="1000" placeholder="YOUR THOUGHTS ON THIS ISSUE…">${escapeHtml(existingReview)}</textarea>
-              <div class="tm-bubble-count"><span id="tmReviewCount">${existingReview.length}</span> / 1000</div>
+          ${tmMetaHtml(issue)}
+          <div class="tm-rating">
+            <div class="tm-rating-row">
+              <div class="tm-star-picker">${starPickerHtml('tmStarPicker')}</div>
+              <span class="tm-onomatopoeia${ono.hot?' tm-hot':''}" id="tmOno">${ono.text}</span>
+            </div>
+          </div>
+          <div class="tm-review">
+            <div class="tm-bubble-wrap">
+              <span class="tm-bubble-label">YOUR REVIEW</span>
+              <div class="tm-bubble">
+                <textarea id="tmReview" maxlength="1000" placeholder="YOUR THOUGHTS ON THIS ISSUE…">${escapeHtml(existingReview)}</textarea>
+                <div class="tm-bubble-count"><span id="tmReviewCount">${existingReview.length}</span> / 1000</div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+      <div class="tm-friends">
+        <div class="tm-friends-head"><h4>WHAT YOUR FRIENDS THINK</h4><span class="tm-friends-count">${countBadge}</span></div>
+        ${friendsBody}
       </div>
     </div>
     <div class="tm-footer">
@@ -2546,10 +2616,6 @@ function renderModal(){
         <button type="button" class="tm-btn tm-btn-cancel" id="tmCancel">CANCEL</button>
         <button type="button" class="tm-btn tm-btn-save" id="tmSave"><span>${existing ? 'UPDATE!' : 'LOG IT!'}</span></button>
       </div>
-    </div>
-    <div class="tm-friends">
-      <div class="tm-friends-head"><h4>WHAT YOUR FRIENDS THINK</h4><span class="tm-friends-count">${countBadge}</span></div>
-      ${friendsBody}
     </div>
     <div class="tm-stamp" id="tmStamp">THWIP! SAVED!</div>`;
 
@@ -2580,11 +2646,6 @@ function renderModal(){
   const countEl = document.getElementById('tmReviewCount');
   reviewEl.addEventListener('input', ()=>{ countEl.textContent = reviewEl.value.length; });
 
-  document.querySelectorAll('[data-tm-readmore]').forEach(btn=> btn.addEventListener('click', ()=>{
-    const bubble = document.getElementById('tmfb-'+btn.dataset.tmReadmore);
-    if(bubble) bubble.classList.add('tm-expanded');
-    btn.remove();
-  }));
   document.querySelectorAll('[data-tm-friend-user]').forEach(btn=> btn.addEventListener('click', ()=>{
     const uid = btn.dataset.tmFriendUser;
     closeModal();
@@ -2725,28 +2786,31 @@ function renderBatchModal(){
       <h2 id="tmModalTitle">LOG ${issues.length} ISSUE${issues.length!==1?'S':''}!</h2>
       <button type="button" class="tm-close" id="tmClose" aria-label="Close">&times;</button>
     </div>
-    <div class="tm-body">
-      <div class="tm-grid">
-        ${tmBatchCoverHtml(issues)}
-        <div class="tm-caption">
-          <div class="tm-year">${issues.length} ISSUE${issues.length!==1?'S':''}</div>
-          <div class="tm-series-line">${escapeHtml((batchLabel||'').toUpperCase())}</div>
-        </div>
-        <div class="tm-rating">
-          <div class="tm-rating-row">
-            <div class="tm-star-picker">${starPickerHtml('tmStarPicker')}</div>
-            <span class="tm-onomatopoeia${ono.hot?' tm-hot':''}" id="tmOno">${ono.text}</span>
+    <div class="tm-scroll">
+      <div class="tm-body">
+        <div class="tm-grid">
+          ${tmBatchCoverHtml(issues)}
+          <div class="tm-caption">
+            <div class="tm-year">${issues.length} ISSUE${issues.length!==1?'S':''}</div>
+            <div class="tm-series-line">${escapeHtml((batchLabel||'').toUpperCase())}</div>
           </div>
-        </div>
-        <div class="tm-review">
-          <div class="tm-bubble-wrap">
-            <span class="tm-bubble-label">YOUR REVIEW · APPLIED TO ALL</span>
-            <div class="tm-bubble">
-              <textarea id="tmReview" maxlength="1000" placeholder="YOUR THOUGHTS ON THIS RUN…"></textarea>
-              <div class="tm-bubble-count"><span id="tmReviewCount">0</span> / 1000</div>
+          <div class="tm-rating">
+            <div class="tm-rating-row">
+              <div class="tm-star-picker">${starPickerHtml('tmStarPicker')}</div>
+              <span class="tm-onomatopoeia${ono.hot?' tm-hot':''}" id="tmOno">${ono.text}</span>
+            </div>
+          </div>
+          <div class="tm-review">
+            <div class="tm-bubble-wrap">
+              <span class="tm-bubble-label">YOUR REVIEW · APPLIED TO ALL</span>
+              <div class="tm-bubble">
+                <textarea id="tmReview" maxlength="1000" placeholder="YOUR THOUGHTS ON THIS RUN…"></textarea>
+                <div class="tm-bubble-count"><span id="tmReviewCount">0</span> / 1000</div>
+              </div>
             </div>
           </div>
         </div>
+        <p class="hint" style="padding:14px 0 0;opacity:0.75">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>
       </div>
     </div>
     <div class="tm-footer">
@@ -2755,7 +2819,6 @@ function renderBatchModal(){
         <button type="button" class="tm-btn tm-btn-save" id="tmSave"><span>LOG ALL ${issues.length}!</span></button>
       </div>
     </div>
-    <p class="hint" style="padding:14px 20px 0;opacity:0.75">Each issue gets its own diary entry — this doesn't overwrite anything you already logged.</p>
     <div class="tm-stamp" id="tmStamp">THWIP! SAVED!</div>`;
 
   document.getElementById('tmClose').addEventListener('click', closeModal);
