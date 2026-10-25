@@ -856,10 +856,22 @@ async function logout(){
   await sb.auth.signOut();
 }
 
-sb.auth.onAuthStateChange((_event, sess)=>{
+// Le client Supabase redéclenche cet évènement (TOKEN_REFRESHED, parfois
+// SIGNED_IN à nouveau) à chaque fois que l'onglet redevient visible/actif,
+// pas seulement à la vraie connexion — pour revalider le token. Sans garde,
+// chaque retour sur l'onglet relançait boot() en entier (écran de
+// chargement + tous les fetches) même si rien n'avait changé depuis.
+let hasBooted = false;
+let bootedUserId = null;
+async function bootIfNeeded(sess){
   session = sess;
-  if(session){ boot(); } else { showAuthScreen(); }
-});
+  if(!session){ hasBooted = false; bootedUserId = null; showAuthScreen(); return; }
+  if(hasBooted && bootedUserId === session.user.id) return; // juste une revalidation de token — rien à refaire
+  hasBooted = true;
+  bootedUserId = session.user.id;
+  await boot();
+}
+sb.auth.onAuthStateChange((_event, sess)=>{ bootIfNeeded(sess); });
 
 /* ---------------- DATA ACCESS (Supabase) ---------------- */
 const ISSUES_CACHE_KEY = 'tomics_issues_cache_v1';
@@ -2994,8 +3006,7 @@ function renderBatchModal(){
 /* ---------------- INIT ---------------- */
 (async function init(){
   const { data } = await sb.auth.getSession();
-  session = data.session;
-  if(session){ boot(); } else { showAuthScreen(); }
+  await bootIfNeeded(data.session);
 })();
 
 })();
