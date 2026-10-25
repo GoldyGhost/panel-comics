@@ -777,6 +777,7 @@ let heroSearchDraft = '';
 let state = {
   tab:'home', groupBy:'series', search:'', filterYearFrom:'', filterYearTo:'', filterHero:'', browsePage:1,
   viewingFriendId:null, friendFilterSeries:'', friendFilterRating:'', friendSortOrder:'desc', friendShowAllReads:false,
+  viewingFriendPublicListId:null,
   viewingWatchlistId:null, watchlistShowUnreadOnly:false,
 };
 let authMode = 'login';
@@ -1943,9 +1944,9 @@ function friendStatsHtml(allLogs){
     <div class="stat-card"><b>${Object.keys(bySeries).length}</b><span>Series explored</span></div>
     <div class="stat-card"><b style="font-size:20px">${topHeroes.length ? escapeHtml(topHeroes[0][0]) : '—'}</b><span>Favorite hero</span></div>
   </div>
-  ${topSeries.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read series</h2></div><div style="margin-bottom:22px">${bars(topSeries,maxS)}</div>` : ''}
-  ${topWriters.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read writers</h2></div><div style="margin-bottom:22px">${bars(topWriters,maxW)}</div>` : ''}
-  ${topHeroes.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read characters</h2></div><div>${bars(topHeroes,maxH)}</div>` : ''}`;
+  ${topSeries.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read series</h2></div><div style="margin-bottom:28px">${bars(topSeries,maxS)}</div>` : ''}
+  ${topWriters.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read writers</h2></div><div style="margin-bottom:28px">${bars(topWriters,maxW)}</div>` : ''}
+  ${topHeroes.length ? `<div class="section-title"><h2 style="font-size:18px">Most-read characters</h2></div><div style="margin-bottom:28px">${bars(topHeroes,maxH)}</div>` : ''}`;
 }
 function friendPublicListsHtml(userId, username){
   // Visible seulement si je suis cette personne (mes followers = les
@@ -1970,8 +1971,31 @@ function friendPublicListsHtml(userId, username){
         </div>
       </div>
       <div class="row-preview">${issues.slice(0,previewCount()).map(iss=>issueCardHtml(iss,{hideQuickAdd:true})).join('') || '<p class="hint">Empty list.</p>'}</div>
+      ${issues.length > previewCount() ? `<button class="log-group-btn" data-view-friend-list="${w.id}|${userId}" style="margin-top:10px">View all ${issues.length} →</button>` : ''}
     </div>`;
   }).join('')}`;
+}
+// Vue en lecture seule d'UNE liste publique d'un ami, complète (pas limitée
+// à previewCount() comme l'aperçu) — même principe que "View all" dans
+// Reading List, mais ici impossible de modifier/réordonner/supprimer, vue
+// uniquement.
+function renderFriendPublicListDetail(userId, listId){
+  const p = followingProfiles[userId] || followerProfiles[userId];
+  const uname = p ? p.username : 'user';
+  const data = friendPublicLists[userId];
+  const list = data && data.lists ? data.lists.find(w=>w.id===listId) : null;
+  if(!list){
+    return `<div class="section-title"><h2>List not found</h2></div>
+    <button class="log-group-btn" id="backToFriendListOverview">← Back to @${escapeHtml(uname)}</button>`;
+  }
+  const issues = (data.itemsByListId[listId] || []).map(it=>issueById(it.issue_id)).filter(Boolean);
+  return `<div class="section-title"><h2>${escapeHtml(list.name)}</h2><span class="count">@${escapeHtml(uname)} · ${issues.length} issue${issues.length!==1?'s':''}</span></div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+    <button class="log-group-btn" id="backToFriendListOverview">← Back to @${escapeHtml(uname)}</button>
+    <button class="log-group-btn" data-download-friend-list="${listId}|${userId}">⬇ Download</button>
+  </div>
+  <p class="hint" style="margin-bottom:16px">View only — this is @${escapeHtml(uname)}'s list.</p>
+  ${issues.length ? `<div class="grid">${issues.map(iss=>issueCardHtml(iss,{hideQuickAdd:true})).join('')}</div>` : `<div class="empty"><span class="display">Empty list</span></div>`}`;
 }
 function renderFriendOverview(userId){
   const p = followingProfiles[userId] || followerProfiles[userId];
@@ -1979,10 +2003,10 @@ function renderFriendOverview(userId){
   const recent = allLogs.slice().sort((a,b)=> b.loggedAt.localeCompare(a.loggedAt)).slice(0,previewCount());
   return `<div class="section-title"><h2>@${escapeHtml(p?p.username:'user')}</h2><span class="count">${allLogs.length} logged read${allLogs.length!==1?'s':''}</span></div>
   <button class="log-group-btn" id="backToFriends" style="margin-bottom:18px">← Back to Friends</button>
-  ${allLogs.length ? friendStatsHtml(allLogs) : `<div class="empty"><span class="display">No reads yet</span></div>`}
+  ${allLogs.length ? friendStatsHtml(allLogs) : `<div class="empty" style="margin-bottom:28px"><span class="display">No reads yet</span></div>`}
   ${recent.length ? `<div class="section-title"><h2 style="font-size:20px">Recent reads</h2></div>
   <div class="row-preview">${recent.map(l=>{ const iss=issueById(l.issueId); return iss?`<div>${issueCardHtml(iss)}</div>`:''; }).join('')}</div>
-  <button class="log-group-btn" id="friendGoToAllReads">See all reads (${allLogs.length}) →</button>` : ''}
+  <button class="log-group-btn" id="friendGoToAllReads" style="margin-bottom:28px">See all reads (${allLogs.length}) →</button>` : ''}
   ${friendPublicListsHtml(userId, p?p.username:'user')}`;
 }
 function renderFriendAllReads(userId){
@@ -2029,6 +2053,7 @@ function renderFriendAllReads(userId){
   ${logRows}`;
 }
 function renderFriends(){
+  if(state.viewingFriendId && state.viewingFriendPublicListId) return renderFriendPublicListDetail(state.viewingFriendId, state.viewingFriendPublicListId);
   if(state.viewingFriendId && state.friendShowAllReads) return renderFriendAllReads(state.viewingFriendId);
   if(state.viewingFriendId) return renderFriendOverview(state.viewingFriendId);
   const followersNotFollowedBack = [...followerIds].filter(id=> !followingIds.has(id));
@@ -2379,14 +2404,23 @@ function attachMainEvents(){
   document.querySelectorAll('[data-friend-user]').forEach(el=> el.addEventListener('click', ()=>{
     state.viewingFriendId = el.dataset.friendUser;
     state.friendFilterSeries = ''; state.friendFilterRating = ''; state.friendSortOrder = 'desc'; state.friendShowAllReads = false;
+    state.viewingFriendPublicListId = null;
     setTab('friends');
   }));
   const backBtn = document.getElementById('backToFriends');
-  if(backBtn) backBtn.addEventListener('click', ()=>{ state.viewingFriendId = null; render(); });
+  if(backBtn) backBtn.addEventListener('click', ()=>{ state.viewingFriendId = null; state.viewingFriendPublicListId = null; render(); });
   const goAllReads = document.getElementById('friendGoToAllReads');
-  if(goAllReads) goAllReads.addEventListener('click', ()=>{ state.friendShowAllReads = true; render(); });
+  if(goAllReads) goAllReads.addEventListener('click', ()=>{ state.friendShowAllReads = true; state.viewingFriendPublicListId = null; render(); });
   const backOverview = document.getElementById('backToFriendOverview');
   if(backOverview) backOverview.addEventListener('click', ()=>{ state.friendShowAllReads = false; render(); });
+  document.querySelectorAll('[data-view-friend-list]').forEach(el=> el.addEventListener('click', ()=>{
+    const [listId] = el.dataset.viewFriendList.split('|');
+    state.viewingFriendPublicListId = listId;
+    render();
+    window.scrollTo({top:0,behavior:'smooth'});
+  }));
+  const backListOverview = document.getElementById('backToFriendListOverview');
+  if(backListOverview) backListOverview.addEventListener('click', ()=>{ state.viewingFriendPublicListId = null; render(); });
   const fsf = document.getElementById('friendSeriesFilter');
   if(fsf) fsf.addEventListener('change', e=>{ state.friendFilterSeries = e.target.value; render(); });
   const frf = document.getElementById('friendRatingFilter');
@@ -2859,6 +2893,7 @@ function renderModal(){
     closeModal();
     state.viewingFriendId = uid;
     state.friendFilterSeries = ''; state.friendFilterRating = ''; state.friendSortOrder = 'desc'; state.friendShowAllReads = false;
+    state.viewingFriendPublicListId = null;
     setTab('friends');
   }));
   document.querySelectorAll('[data-tm-list]').forEach(btn=> btn.addEventListener('click', ()=>{
