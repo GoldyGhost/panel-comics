@@ -887,7 +887,11 @@ function saveCachedIssues(data){
 const CACHE_KEYS = {
   logs: ()=> `tomics_logs_cache_v1:${session.user.id}`,
   follows: ()=> `tomics_follows_cache_v1:${session.user.id}`,
-  watchlists: ()=> `tomics_watchlists_cache_v1:${session.user.id}`,
+  // v2 : l'ancien cache pouvait contenir des listes publiques d'amis
+  // mélangées aux miennes (bug corrigé ci-dessus) — version bumpée pour
+  // qu'il soit ignoré une fois et repeuplé proprement, sans flash de
+  // l'ancien contenu au prochain chargement.
+  watchlists: ()=> `tomics_watchlists_cache_v2:${session.user.id}`,
   friendProfiles: ()=> `tomics_friend_profiles_cache_v1:${session.user.id}`,
 };
 function loadCache(key){
@@ -1010,12 +1014,24 @@ async function unfollowUser(id){
   return true;
 }
 async function fetchWatchlists(){
-  const { data, error } = await sb.from('watchlists').select('*').order('created_at');
+  // Filtre explicite sur user_id, ne JAMAIS s'appuyer uniquement sur la RLS
+  // ici : depuis les listes de lecture publiques (public_watchlists.sql),
+  // la policy autorise aussi à lire les listes publiques des gens qu'on
+  // suit — sans ce filtre, un select('*') sans condition renvoie donc à la
+  // fois mes propres listes ET celles, publiques, de mes amis, qui se
+  // retrouvaient alors directement mélangées dans "Reading List" au lieu de
+  // n'apparaître que sur le profil de l'ami avec un bouton "Download".
+  const { data, error } = await sb.from('watchlists').select('*').eq('user_id', session.user.id).order('created_at');
   if(error){ console.error(error); return []; }
   return data;
 }
-async function fetchWatchlistItems(){
-  const { data, error } = await sb.from('watchlist_items').select('*');
+async function fetchWatchlistItems(watchlistIds){
+  // Même raison que fetchWatchlists() ci-dessus : on ne demande que les
+  // items des listes passées en argument (mes propres listes), jamais un
+  // select('*') sans filtre qui remonterait aussi les items des listes
+  // publiques des amis via la policy RLS correspondante.
+  if(!watchlistIds || !watchlistIds.length) return [];
+  const { data, error } = await sb.from('watchlist_items').select('*').in('watchlist_id', watchlistIds);
   if(error){ console.error(error); return []; }
   return data;
 }
@@ -1157,7 +1173,8 @@ async function finishBoot(){
   });
 
   const cachedWatchlists = loadCache(CACHE_KEYS.watchlists());
-  const watchlistsPromise = Promise.all([fetchWatchlists(), fetchWatchlistItems()]).then(([wls, wlItems])=>{
+  const watchlistsPromise = fetchWatchlists().then(async wls=>{
+    const wlItems = await fetchWatchlistItems(wls.map(w=>w.id));
     const data = { wls, wlItems };
     saveCache(CACHE_KEYS.watchlists(), data);
     return data;
@@ -1273,7 +1290,8 @@ async function refreshFriendsAndRender(){
   render();
 }
 async function refreshWatchlistsAndRender(){
-  const [wls, wlItems] = await Promise.all([fetchWatchlists(), fetchWatchlistItems()]);
+  const wls = await fetchWatchlists();
+  const wlItems = await fetchWatchlistItems(wls.map(w=>w.id));
   saveCache(CACHE_KEYS.watchlists(), { wls, wlItems });
   watchlists = wls; watchlistItems = wlItems;
   render();
