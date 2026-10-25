@@ -608,6 +608,18 @@
   }
   .tm-rate .tm-friend-bubble p { margin: 0; }
   .tm-rate .tm-friends-empty { text-align: center; color: var(--ink-soft); font-size: 13px; padding: 20px 10px; font-style: italic; }
+
+  /* ---- "IN YOUR READING LISTS" (sous les avis des amis) ---- */
+  .tm-rate .tm-lists { margin-top: 24px; }
+  .tm-rate .tm-lists-head { background: var(--ink); padding: 10px 14px; }
+  .tm-rate .tm-lists-head h4 { margin: 0; font-family: 'Bangers', sans-serif; font-weight: 400; font-size: 17px; color: var(--gold); }
+  .tm-rate .tm-lists-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .tm-rate .tm-list-tag {
+    display: flex; align-items: center; gap: 6px; background: #fff; border: 2.5px solid #1B160F; border-radius: 20px;
+    padding: 5px 12px 5px 9px; font-family: 'Inter', sans-serif; font-weight: 700; font-size: 11px; color: #1B160F;
+    box-shadow: 2px 2px 0 rgba(0,0,0,0.25); cursor: pointer;
+  }
+  .tm-rate .tm-list-tag:hover { filter: brightness(0.97); }
 </style>
 </head>
 <body>
@@ -2128,21 +2140,27 @@ async function handleWatchlistImportFile(file){
     results.push({ raw, issue: found || null });
   }
   if(!results.length){ alert('Fichier vide ou illisible.'); return; }
-  let listId = state.viewingWatchlistId;
+  let listId = state.viewingWatchlistId || null;
+  let listName = null;
   if(!listId){
     const name = window.prompt('Importer dans quelle liste ? Tape un nom existant, ou un nouveau pour la créer :');
     if(!name || !name.trim()) return;
-    let w = watchlists.find(x => x.name.toLowerCase() === name.trim().toLowerCase());
-    if(!w){ w = await createWatchlist(name.trim()); if(!w) return; watchlists.push(w); }
-    listId = w.id;
+    const trimmed = name.trim();
+    const existing = watchlists.find(x => x.name.toLowerCase() === trimmed.toLowerCase());
+    if(existing){ listId = existing.id; }
+    // Nouvelle liste : on retient juste le nom choisi, on ne la crée PAS
+    // tout de suite — seulement si l'import est confirmé (voir
+    // csvReviewConfirm plus bas). Sinon, annuler à l'étape de vérification
+    // créait quand même une liste, vide.
+    else { listName = trimmed; }
   }
-  openCsvReviewModal(results, listId);
+  openCsvReviewModal(results, listId, listName);
 }
 
 /* ---------------- CSV IMPORT — pop-up de vérification avant import ---------------- */
-let csvReviewResults = null, csvReviewListId = null;
-function openCsvReviewModal(results, listId){
-  csvReviewResults = results; csvReviewListId = listId;
+let csvReviewResults = null, csvReviewListId = null, csvReviewListName = null;
+function openCsvReviewModal(results, listId, listName){
+  csvReviewResults = results; csvReviewListId = listId; csvReviewListName = listName || null;
   document.getElementById('overlay').classList.add('open');
   renderCsvReviewModal();
 }
@@ -2171,8 +2189,18 @@ function renderCsvReviewModal(){
   const confirmBtn = document.getElementById('csvReviewConfirm');
   if(confirmBtn) confirmBtn.addEventListener('click', async (e)=>{
     const btn = e.currentTarget; btn.disabled = true;
+    // La nouvelle liste (si c'en est une) n'est créée que MAINTENANT, à la
+    // confirmation — jamais avant, sinon annuler à cette étape créait quand
+    // même une liste vide.
+    let listId = csvReviewListId;
+    if(!listId){
+      const w = await createWatchlist(csvReviewListName);
+      if(!w){ btn.disabled = false; return; }
+      watchlists.push(w);
+      listId = w.id;
+    }
     const ids = matched.map(r=>r.issue.id);
-    const ok = await addManyToWatchlist(csvReviewListId, ids);
+    const ok = await addManyToWatchlist(listId, ids);
     if(ok){
       await refreshWatchlistsAndRender();
       closeModal();
@@ -2629,6 +2657,27 @@ function tmMetaHtml(issue){
   if(!rows.length) return '';
   return `<dl class="tm-meta">${rows.map(([k,v])=>`<div><dt>${k}</dt><dd>${escapeHtml(v)}</dd></div>`).join('')}</dl>`;
 }
+// Mes reading lists (hors "Read Later", le pense-bête par défaut — même
+// logique que nonDefaultWatchlistIssueIds) qui contiennent cette issue.
+function watchlistsContainingIssue(issueId){
+  const defIds = new Set(watchlists.filter(w=>w.is_default).map(w=>w.id));
+  const listIds = new Set(watchlistItems.filter(it=>it.issue_id===issueId && !defIds.has(it.watchlist_id)).map(it=>it.watchlist_id));
+  return watchlists.filter(w=>listIds.has(w.id));
+}
+// Section "IN YOUR READING LISTS" du popup "RATE THIS ISSUE!" (sous les
+// avis des amis) — une pastille cliquable par liste contenant l'issue,
+// menant directement à cette liste. Section absente si l'issue n'est dans
+// aucune liste (voir maquette validée).
+function tmReadingListsSection(issueId){
+  const lists = watchlistsContainingIssue(issueId);
+  if(!lists.length) return '';
+  return `<div class="tm-lists">
+    <div class="tm-lists-head"><h4>IN YOUR READING LISTS</h4></div>
+    <div class="tm-lists-row">
+      ${lists.map(w=>`<button type="button" class="tm-list-tag" data-tm-list="${w.id}">📖 ${escapeHtml(w.name)}</button>`).join('')}
+    </div>
+  </div>`;
+}
 function tmFriendsSection(){
   const byUser = new Map();
   friendsLogsCache.filter(l=> l.issueId === modalIssueId).forEach(l=>{
@@ -2768,6 +2817,7 @@ function renderModal(){
         <div class="tm-friends-head"><h4>WHAT YOUR FRIENDS THINK</h4><span class="tm-friends-count">${countBadge}</span></div>
         ${friendsBody}
       </div>
+      ${tmReadingListsSection(modalIssueId)}
     </div>
     <div class="tm-footer">
       <div class="tm-btn-row">
@@ -2810,6 +2860,11 @@ function renderModal(){
     state.viewingFriendId = uid;
     state.friendFilterSeries = ''; state.friendFilterRating = ''; state.friendSortOrder = 'desc'; state.friendShowAllReads = false;
     setTab('friends');
+  }));
+  document.querySelectorAll('[data-tm-list]').forEach(btn=> btn.addEventListener('click', ()=>{
+    closeModal();
+    state.viewingWatchlistId = btn.dataset.tmList;
+    setTab('watchlist');
   }));
 
   document.getElementById('tmSave').addEventListener('click', async (e)=>{
